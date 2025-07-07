@@ -1,0 +1,29 @@
+services:
+  - name: user-service
+    url: https://google.com/test
+    phones:
+      - "+989123456789"
+      - "+989198765432"
+    check_period: 60        # هر ۶۰ ثانیه یک‌بار چک شود
+    sleep_on_fail: 300      # بعد از شناسایی Fail، تا ۳۰۰ ثانیه بعدش دوباره چک نکن
+    expected_status_code: 200
+
+  - name: payment-service
+    url:  https://google.com/test2
+    phones:
+      - "+989123456789"
+    check_period: 30
+    sleep_on_fail: 180
+    expected_status_code: 200
+
+  - name: auth-service
+    url:  https://google.com
+    phones:
+      - "+989112223344"
+      - "+989122223344"
+    check_period: 60
+    sleep_on_fail: 240
+    expected_status_code: 200
+
+user: test
+pass: pass
