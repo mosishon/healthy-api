@@ -27,7 +27,7 @@
 
 ۱. پروژه را Clone کنید:
 ```bash
-git clone [https://github.com/mosishon/healthy-api.git](https://github.com/mosishon/healthy-api.git)
+git clone https://github.com/mosishon/healthy-api.git
 cd healthy-api
 ```
 
