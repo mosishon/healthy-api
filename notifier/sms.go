@@ -12,8 +12,10 @@ import (
 )
 
 type SMSNotifier struct {
-	User string
-	Pass string
+	User   string
+	Pass   string
+	URL    string
+	Logger *log.Logger
 }
 
 func newSendSMSHeader() http.Header {
@@ -38,9 +40,9 @@ func (s *SMSNotifier) GetDataKey() string {
 	return "app-name"
 }
 func (s *SMSNotifier) GetURL() string {
-	return "http://ippanel.com/api/select"
+	return s.URL
 }
-func (s SMSNotifier) Notif(n model.Notification) error {
+func (s SMSNotifier) Notify(n model.Notification) error {
 
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -75,7 +77,7 @@ func (s SMSNotifier) Notif(n model.Notification) error {
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("Error response code is %d. Body: %s", resp.StatusCode, string(bodyData))
 		}
-		log.Printf("[SMS] Sent to %s, status=%d, body=%s", target, resp.StatusCode, string(bodyData))
+		s.Logger.Printf("[SMS] Sent to %s, status=%d, body=%s\n", target, resp.StatusCode, string(bodyData))
 	}
 
 	return nil

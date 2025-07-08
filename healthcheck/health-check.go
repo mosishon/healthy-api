@@ -1,7 +1,6 @@
 package healthcheck
 
 import (
-	"bytes"
 	"healthy-api/model"
 	"healthy-api/notifier"
 	"log"
@@ -10,16 +9,16 @@ import (
 )
 
 type HealthChecker struct {
-	Service  model.Service
-	Notifier notifier.Notifier
-	Client   *http.Client
-	Logger   *log.Logger
+	Service          model.Service
+	NotifierRegistry *notifier.Registry
+	Client           *http.Client
+	Logger           *log.Logger
 }
 
 func (h *HealthChecker) Start() {
 	h.Logger.Printf("Health checker started for :%v", h.Service)
 	for {
-		request, err := http.NewRequest("GET", h.Service.URL, bytes.NewBuffer(nil))
+		request, err := http.NewRequest("GET", h.Service.URL, nil)
 		if err != nil {
 			h.Logger.Printf("error while creating request in %v %v.\n", h.Service, err)
 			break
@@ -34,18 +33,29 @@ func (h *HealthChecker) Start() {
 		resp.Body.Close()
 
 		if resp.StatusCode != h.Service.ExpectedStatusCode {
-			h.Logger.Println("Notifing using notifier")
-			err := h.Notifier.Notif(model.Notification{
-				ServiceName: h.Service.Name,
-				Recipients:  h.Service.Phones,
-			})
-			if err != nil {
-				h.Logger.Printf("failed to notify: %v", err)
-			}
+			for _, target := range h.Service.Targets {
+				notifierInst := h.NotifierRegistry.Get(target.NotifierID)
+				if notifierInst == nil {
+					h.Logger.Printf("notifier with id %s not found\n", target.NotifierID)
+					continue
+				}
+				err := notifierInst.Notify(model.Notification{
+					ServiceName: h.Service.Name,
+					Recipients:  target.Recipients,
+				})
+				if err != nil {
+					h.Logger.Printf("Failed to Notify using %v,%v\n", notifierInst, err)
+				} else {
+					h.Logger.Printf("Notified using %v\n", notifierInst)
 
+				}
+			}
+			h.Logger.Printf("[SLEEP] sleeping for %d.\n", h.Service.SleepOnFail)
 			time.Sleep(time.Duration(h.Service.SleepOnFail) * time.Second)
 
 		} else {
+			h.Logger.Printf("[SLEEP] sleeping for %d.\n", h.Service.CheckPeriod)
+
 			time.Sleep(time.Duration(h.Service.CheckPeriod) * time.Second)
 		}
 
