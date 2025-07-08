@@ -54,7 +54,7 @@ go build -o healthy-api
 ```yaml
 services:
   - name: google-service-check # نام سرویس (برای نمایش در هشدارها)
-    url: [https://google.com](https://google.com)
+    url: https://google.com
     targets:
       - notifier_id: personal_smtp # شناسه Notifier که در ادامه تعریف می‌شود
         recipients:
@@ -68,7 +68,7 @@ services:
     expected_status_code: 200 # کد وضعیت موفقیت‌آمیز
 
   - name: user-api
-    url: [https://my-api.dev/health](https://my-api.dev/health)
+    url: https://my-api.dev/health
     targets:
       - notifier_id: work_sms
         recipients:
