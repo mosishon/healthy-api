@@ -1,68 +1,68 @@
-# 🩺 Healthy API - مانیتورینگ پیشرفته سرویس‌ها
+# 🩺 Healthy API - Advanced Service Monitoring
 
-**Healthy API** یک ابزار قدرتمند و قابل توسعه برای مانیتورینگ لحظه‌ای سلامت (Health Check) وب‌سرویس‌های شماست. این پروژه با زبان **Go** نوشته شده و به شما کمک می‌کند تا با بررسی‌های دوره‌ای، از در دسترس بودن (Availability) و عملکرد صحیح سرویس‌هایتان مطمئن شوید و در صورت بروز هرگونه مشکل، بلافاصله از طریق کانال‌های مختلف (ایمیل و پیامک) با خبر شوید.
-
----
-
-## ✨ امکانات کلیدی
-
-- **مانیتورینگ چندین سرویس:** قابلیت تعریف و مانیتورینگ همزمان تعداد نامحدودی سرویس.
-- **سیستم هشدار چند کاناله:** ارسال نوتیفیکیشن از طریق **ایمیل (SMTP)** و **پیامک (IPPanel)** با معماری قابل توسعه برای افزودن کانال‌های جدید.
-- **بررسی‌های دوره‌ای هوشمند:** تنظیم بازه‌های زمانی دلخواه برای چک کردن هر سرویس.
-- **جلوگیری از اسپم (Spam):** قابلیت تعریف یک دوره زمانی سکوت (`sleep_on_fail`) پس از شناسایی خطا برای جلوگیری از ارسال هشدارهای تکراری.
-- **شرایط بررسی قابل تنظیم:** امکان تعریف **کد وضعیت HTTP** مورد انتظار (`expected_status_code`) برای هر سرویس.
-- **اجرای همزمان (Concurrent):** استفاده از Goroutine برای مانیتورینگ تمام سرویس‌ها به صورت همزمان و بدون تداخل.
-- **پیکربندی آسان:** تمام تنظیمات پروژه از طریق یک فایل `YAML` ساده و خوانا مدیریت می‌شود.
+**Healthy API** is a powerful and extensible tool for real-time health checking of your web services. Written in **Go**, this project helps you ensure the availability and proper functioning of your services through periodic checks. If any service fails, it instantly alerts you through multiple channels like Email, SMS, and custom Webhooks.
 
 ---
 
-## 🚀 شروع به کار
+## ✨ Key Features
 
-### پیش‌نیازها
+- **Multi-Service Monitoring:** Define and monitor an unlimited number of services simultaneously.
+- **Multi-Channel Alerting System:** Get notified via **SMTP (Email)**, **SMS (IPPanel)**, and **Webhooks**. The architecture is extensible for adding new channels.
+- **Intelligent Periodic Checks:** Set custom intervals (`check_period`) for monitoring each service.
+- **Spam Prevention:** Define a cooldown period (`sleep_on_fail`) after a failure is detected to avoid repetitive alerts.
+- **Customizable Health Conditions:** Specify the expected HTTP status code (`expected_status_code`) to define a "healthy" state for each service.
+- **Concurrent by Design:** Utilizes Goroutines to monitor all services concurrently without blocking.
+- **Easy Configuration:** All settings are managed through a single, human-readable `YAML` file.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - **Go 1.21+**
-- دسترسی به یک سرویس ایمیل (SMTP) یا پنل پیامک (مانند IPPanel)
+- Access to an SMTP server, an IPPanel SMS gateway, or a webhook endpoint.
 
-### اجرا
+### Installation & Usage
 
-۱. پروژه را Clone کنید:
-```bash
-git clone https://github.com/mosishon/healthy-api.git
-cd healthy-api
-```
+1.  **Clone the repository:**
+    ```bash
+    git clone [https://github.com/mosishon/healthy-api.git](https://github.com/mosishon/healthy-api.git)
+    cd healthy-api
+    ```
 
-۲. یک فایل پیکربندی (مثلاً `config.yaml`) بر اساس نمونه زیر بسازید.
+2.  **Create a configuration file** (e.g., `config.yaml`) by copying and modifying the `sample.yaml` file.
 
-۳. برنامه را با دستور زیر اجرا کنید:
-```bash
-go run main.go -config=config.yaml
-```
+3.  **Run the application:**
+    ```bash
+    go run main.go -config=config.yaml
+    ```
 
-یا می‌توانید ابتدا فایل اجرایی را بسازید:
-```bash
-go build -o healthy-api
-./healthy-api -config=config.yaml -verbose
-```
-> از فلگ `-verbose` برای دیدن لاگ‌های کامل برنامه استفاده کنید.
+    Alternatively, you can build the executable first:
+    ```bash
+    go build -o healthy-api
+    ./healthy-api -config=config.yaml -verbose
+    ```
+    > Use the `-verbose` flag to see detailed application logs.
 
 ---
 
-## ⚙️ پیکربندی (Configuration)
+## ⚙️ Configuration
 
-تمام تنظیمات در یک فایل YAML مدیریت می‌شوند. ساختار این فایل به شکل زیر است:
+All settings are managed in a single YAML file. The structure is as follows:
 
 ```yaml
+#===========================================
+#        Services to Monitor
+#===========================================
 services:
-#===========================================
-#        سرویس‌های تحت مانیتورینگ
-#===========================================
-  - name: "production-api-service" # نام سرویس جهت نمایش در هشدار ها
-    url: "https://api.my-domain.com/health"
+  - name: "production-api-service" # A descriptive name for display in alerts
+    url: "[https://api.my-domain.com/health](https://api.my-domain.com/health)"
     
-    expected_status_code: 200 # وضعیت موفقیت‌آمیز رو 200 در نظر بگیر
-    check_period: 60 # هر 60 ثانیه یک‌بار چک کن
-    sleep_on_fail: 300 # اگر سرویس در وضعیت اشتباه بود، برای جلوگیری از اسپم، تا 5 دقیقه بعدش چک نکن
-    # در صورت بروز مشکل، به این کانال‌ها هشدار بفرست
+    expected_status_code: 200 # The expected HTTP status code for a successful check
+    check_period: 60 # Check every 60 seconds
+    sleep_on_fail: 300 # If the service fails, wait 5 minutes before the next check to prevent spam
+    # On failure, send alerts to these targets
     targets:
       - notifier_id: "admins-email-group"
         recipients:
@@ -73,92 +73,93 @@ services:
           - "+989120000001"
       - notifier_id: "slack-notification-hook"
         recipients:
-          # شما می‌توانید چندین آدرس وب‌هوک را برای یک شناسه تعریف کنید
-          - "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
-          - "https://your-custom-api-endpoint.com/notify"
+          # You can define multiple webhook URLs for a single notifier ID
+          - "[https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX](https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX)"
+          - "[https://your-custom-api-endpoint.com/notify](https://your-custom-api-endpoint.com/notify)"
 
 #===========================================
-#        پیکربندی کانال‌های اطلاع‌رسانی
+#        Notification Channel Configuration
 #===========================================
 notifiers:
-  # ------ سرورهای ایمیل (SMTP) ------
+  # ------ Email Servers (SMTP) ------
   smtp:
-    - id: personal_smtp
+    - id: "admins-email-group" # This ID must match the 'notifier_id' in services
       sender: "notifier@your-domain.com"
       password: "your-smtp-password"
       server: "smtp.your-domain.com"
       port: 587
 
-  # ------ پنل‌های پیامک (مانند IPPanel) ------
+  # ------ SMS Gateways (e.g., IPPanel) ------
   ippanel: 
-    - id: work_sms
+    - id: "on-call-sms-alert"
       url: <YOUR_IPPANEL_URL>
       user: <YOUR_IPPANEL_USERNAME>
       pass: <YOUR_IPPANEL_PASSWORD>
 
-  # ------ وب‌هوک‌ها (برای ارسال POST Request با قالب دلخواه) ------
+  # ------ Webhooks (For sending custom POST requests) ------
   webhook:
     - id: "slack-notification-hook"
-      # متد HTTP که برای ارسال وب‌هوک استفاده می‌شود (مثلاً POST, PUT)
+      # The HTTP method to use for the webhook (e.g., POST, PUT)
       method: POST
-      # هدرهای مورد نیاز برای ارسال درخواست
+      # Custom headers for the request
       headers:
         Content-Type: "application/json"
-        Authorization: "Bearer your-secret-token" # مثال برای هدر احراز هویت
-      # بدنه (Body) درخواست با فرمت JSON
-      # شما می‌توانید از متغیرهای قالب برای جایگذاری مقادیر داینامیک استفاده کنید
+        Authorization: "Bearer your-secret-token" # Example for an auth header
+      # The JSON body of the request.
+      # You can use template variables for dynamic values.
       json:
-        # متغیر {{ .ServiceName }} با نام سرویس جایگزین می‌شود
+        # {{ .ServiceName }} is replaced with the service name
         message: "🔴 Alert: Service '{{ .ServiceName }}' is down!"
-        # متغیر {{ .TimeStamp }} با زمان وقوع خطا جایگزین می‌شود
+        # {{ .TimeStamp }} is replaced with the failure timestamp
         timestamp: "{{ .TimeStamp }}"
         details: "Request to {{ .URL }} failed."
 ```
 
 ---
 
-## 🏗️ ساختار پروژه
+## 🏗️ Project Structure
 
-معماری پروژه به صورت ماژولار طراحی شده تا به راحتی بتوان قابلیت‌های جدیدی به آن اضافه کرد.
+The project is designed with a modular architecture to easily accommodate new features.
 
-```bash
+```
 .
-├── config/         # منطق بارگذاری و پردازش فایل کانفیگ YAML
-├── healthcheck/    # هسته اصلی برنامه برای اجرای حلقه‌های بررسی سرویس
-├── model/          # تعریف ساختارها (Structs) مانند Service, Notifier, Config
-├── notifier/       # سیستم ارسال هشدار (ایمیل، پیامک و...)
-│   ├── notifier.go # اینترفیس اصلی برای Notifier ها
-│   ├── registry.go # مدیریت و ثبت Notifier های مختلف
-│   ├── mail.go     # پیاده‌سازی ارسال ایمیل (SMTP)
-│   └── sms.go      # پیاده‌سازی ارسال پیامک (IPPanel)
-├── main.go         # نقطه ورود و هماهنگ‌کننده ماژول‌ها
-└── sample.yaml     # فایل نمونه پیکربندی
+├── config/         # Logic for loading and parsing the YAML config file
+├── healthcheck/    # The core engine for running service check loops
+├── model/          # Struct definitions (Service, Notifier, Config, etc.)
+├── notifier/       # The alert notification system (Email, SMS, etc.)
+│   ├── notifier.go # The main interface for all notifiers
+│   ├── registry.go # Manages and registers different notifiers
+│   ├── mail.go     # SMTP email implementation
+│   ├── sms.go      # IPPanel SMS implementation
+│   └── webhook.go  # Webhook implementation
+├── main.go         # The entry point that coordinates all modules
+└── sample.yaml     # An example configuration file
 ```
 
 ---
 
-## 🗺️ نقشه راه آینده (Roadmap)
+## 🗺️ Roadmap
 
-- [ ] افزودن **Graceful Shutdown** با استفاده از `context` برای مدیریت بهتر Goroutine ها.
-- [ ] پیاده‌سازی **Unit Test** برای ماژول‌های `healthcheck` و `notifier`.
-- [ ] پشتیبانی از **بررسی محتوای Response** با استفاده از عبارت‌های منظم (Regex).
-- [ ] افزودن Notifier های بیشتر (مانند **Slack**, **Telegram**).
-- [ ] ذخیره لاگ‌ها در یک فایل یا پایگاه داده برای تحلیل‌های بعدی.
-- [ ] ساخت یک **رابط کاربری تحت وب (Web UI)** ساده برای نمایش وضعیت آنلاین سرویس‌ها.
-
----
-
-## 🤝 مشارکت (Contributing)
-
-از هرگونه مشارکت (PR و Issue) به شدت استقبال می‌شود! اگر ایده‌ای برای بهتر شدن پروژه دارید، خوشحال می‌شویم آن را با ما در میان بگذارید.
-
-برای توسعه کد، لطفا اصول زیر را دنبال کنید:
-- رعایت **قراردادهای نام‌گذاری (Naming Conventions)** در Go.
-- طراحی مبتنی بر **اینترفیس (Interface-based Design)** برای انعطاف‌پذیری بیشتر.
-- استفاده از **لاگر (Logger)** قابل کنترل برای دیباگ بهتر.
+- [ ] Implement **Graceful Shutdown** using `context` for better Goroutine management.
+- [ ] Add **Unit Tests** for the `healthcheck` and `notifier` modules.
+- [ ] Support **Response Body Validation** using regular expressions (Regex).
+- [ ] Add more notifiers (e.g., **Slack**, **Telegram**).
+- [ ] Persist logs to a file or database for historical analysis.
+- [ ] Develop a simple **Web UI** to display the real-time status of services.
 
 ---
 
-## 📄 لایسنس
+## 🤝 Contributing
 
-**Mostafa Arshadi** (با افتخار، برای یادگیری، پیشرفت و کار تیمی ❤️)
+Contributions (PRs and issues) are highly welcome! If you have an idea for improving the project, we would love to hear from you.
+
+Please follow these principles when contributing:
+- Adhere to Go's **Naming Conventions**.
+- Use **Interface-based Design** for greater flexibility.
+- Use a controllable **Logger** for better debugging.
+
+---
+
+## 📄 License
+
+**Mostafa Arshadi** (Proudly built for learning, growth, and teamwork ❤️)
