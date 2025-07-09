@@ -1,6 +1,6 @@
 # 🩺 Healthy API - Advanced Service Monitoring
 
-## 🌐 زبان‌ها / Languages
+## 🌐 Languages
 
 - [English](README.md)
 - [فارسی](README.fa.md)
