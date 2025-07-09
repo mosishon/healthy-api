@@ -90,6 +90,69 @@ notifiers:
       password: "your-smtp-password"
       server: "smtp.your-domain.com"
       port: 587
+
+
+      #===========================================
+#        سرویس‌های تحت مانیتورینگ
+#===========================================
+services:
+  - name: "production-api-service"
+    url: "https://api.my-domain.com/health"
+    
+    expected_status_code: 200 # وضعیت موفقیت‌آمیز رو 200 در نظر بگیر
+    check_period: 60 # هر 60 ثانیه یک‌بار چک کن
+    sleep_on_fail: 300 # اگر سرویس در وضعیت اشتباه بود، برای جلوگیری از اسپم، تا 5 دقیقه بعدش چک نکن
+    # در صورت بروز مشکل، به این کانال‌ها هشدار بفرست
+    targets:
+      - notifier_id: "admins-email-group"
+        recipients:
+          - "admin1@example.com"
+          - "cto@example.com"
+      - notifier_id: "on-call-sms-alert"
+        recipients:
+          - "+989120000001"
+      - notifier_id: "slack-notification-hook"
+        recipients:
+          # شما می‌توانید چندین آدرس وب‌هوک را برای یک شناسه تعریف کنید
+          - "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+          - "https://your-custom-api-endpoint.com/notify"
+
+#===========================================
+#        پیکربندی کانال‌های اطلاع‌رسانی
+#===========================================
+notifiers:
+  # ------ سرورهای ایمیل (SMTP) ------
+  smtp:
+    - id: personal_smtp
+      sender: "notifier@your-domain.com"
+      password: "your-smtp-password"
+      server: "smtp.your-domain.com"
+      port: 587
+
+  # ------ پنل‌های پیامک (مانند IPPanel) ------
+  ippanel: 
+    - id: work_sms
+      url: <YOUR_IPPANEL_URL>
+      user: <YOUR_IPPANEL_USERNAME>
+      pass: <YOUR_IPPANEL_PASSWORD>
+
+  # ------ وب‌هوک‌ها (برای ارسال POST Request با قالب دلخواه) ------
+  webhook:
+    - id: "slack-notification-hook"
+      # متد HTTP که برای ارسال وب‌هوک استفاده می‌شود (مثلاً POST, PUT)
+      method: POST
+      # هدرهای مورد نیاز برای ارسال درخواست
+      headers:
+        Content-Type: "application/json"
+        Authorization: "Bearer your-secret-token" # مثال برای هدر احراز هویت
+      # بدنه (Body) درخواست با فرمت JSON
+      # شما می‌توانید از متغیرهای قالب برای جایگذاری مقادیر داینامیک استفاده کنید
+      json:
+        # متغیر {{ .ServiceName }} با نام سرویس جایگزین می‌شود
+        message: "🔴 Alert: Service '{{ .ServiceName }}' is down!"
+        # متغیر {{ .TimeStamp }} با زمان وقوع خطا جایگزین می‌شود
+        timestamp: "{{ .TimeStamp }}"
+        details: "Request to {{ .URL }} failed."
 ```
 
 ---
