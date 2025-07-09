@@ -15,9 +15,16 @@ type Target struct {
 	Recipients []string `yaml:"recipients"`
 }
 
+type Webhook struct {
+	ID      string                 `yaml:"id"`
+	Method  string                 `yaml:"method"`
+	Headers map[string]interface{} `yaml:"headers"`
+	JSON    map[string]interface{} `yaml:"json"`
+}
 type Notifiers struct {
 	IPPanels []IPPanel `yaml:"ippanel"`
 	SMTPs    []SMTP    `yaml:"smtp"`
+	Webhook  []Webhook `yaml:"webhook"`
 }
 type IPPanel struct {
 	ID   string `yaml:"id"`
