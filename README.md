@@ -1,5 +1,14 @@
 # 🩺 Healthy API - Advanced Service Monitoring
 
+## 🌐 زبان‌ها / Languages
+
+- [English](README.md)
+- [فارسی](README.fa.md)
+
+## WIKI
+
+[WIKI](WIKI.md)
+
 **Healthy API** is a powerful and extensible tool for real-time health checking of your web services. Written in **Go**, this project helps you ensure the availability and proper functioning of your services through periodic checks. If any service fails, it instantly alerts you through multiple channels like Email, SMS, and custom Webhooks.
 
 ---
