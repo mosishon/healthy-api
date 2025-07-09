@@ -134,5 +134,4 @@ go build -o healthy-api
 
 -   `-config` (required): Specifies the path to your YAML configuration file.
 -   `-verbose` (optional): If present, the application will print detailed logs of every health check and notification attempt. This is highly recommended for debugging.
-
 ```
