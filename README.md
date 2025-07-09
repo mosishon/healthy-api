@@ -52,51 +52,11 @@ go build -o healthy-api
 تمام تنظیمات در یک فایل YAML مدیریت می‌شوند. ساختار این فایل به شکل زیر است:
 
 ```yaml
-services:
-  - name: google-service-check # نام سرویس (برای نمایش در هشدارها)
-    url: https://google.com
-    targets:
-      - notifier_id: personal_smtp # شناسه Notifier که در ادامه تعریف می‌شود
-        recipients:
-          - "your-email@example.com"
-          - "another-email@example.com"
-      - notifier_id: work_sms
-        recipients:
-          - "09123456789"
-    check_period: 60        # هر ۶۰ ثانیه یک‌بار چک شود
-    sleep_on_fail: 300      # بعد از شناسایی خطا، تا ۳۰۰ ثانیه بعدش دوباره چک نکن
-    expected_status_code: 200 # کد وضعیت موفقیت‌آمیز
-
-  - name: user-api
-    url: https://my-api.dev/health
-    targets:
-      - notifier_id: work_sms
-        recipients:
-          - "09120000000"
-    check_period: 30
-    sleep_on_fail: 120
-    expected_status_code: 200
-
-notifiers:
-  ippanel: # لیست پنل‌های پیامک
-    - id: work_sms
-      url: <YOUR_IPPANEL_URL>
-      user: <YOUR_IPPANEL_USERNAME>
-      pass: <YOUR_IPPANEL_PASSWORD>
-
-  smtp: # لیست سرورهای ایمیل
-    - id: personal_smtp
-      sender: "notifier@your-domain.com"
-      password: "your-smtp-password"
-      server: "smtp.your-domain.com"
-      port: 587
-
-
-      #===========================================
+#===========================================
 #        سرویس‌های تحت مانیتورینگ
 #===========================================
 services:
-  - name: "production-api-service"
+  - name: "production-api-service" # نام سرویس جهت نمایش در هشدار ها
     url: "https://api.my-domain.com/health"
     
     expected_status_code: 200 # وضعیت موفقیت‌آمیز رو 200 در نظر بگیر
