@@ -27,7 +27,7 @@
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/mosishon/healthy-api.git](https://github.com/mosishon/healthy-api.git)
+    git clone https://github.com/mosishon/healthy-api.git
     cd healthy-api
     ```
 
@@ -57,7 +57,7 @@ All settings are managed in a single YAML file. The structure is as follows:
 #===========================================
 services:
   - name: "production-api-service" # A descriptive name for display in alerts
-    url: "[https://api.my-domain.com/health](https://api.my-domain.com/health)"
+    url: "https://api.my-domain.com/health"
     
     expected_status_code: 200 # The expected HTTP status code for a successful check
     check_period: 60 # Check every 60 seconds
@@ -74,8 +74,8 @@ services:
       - notifier_id: "slack-notification-hook"
         recipients:
           # You can define multiple webhook URLs for a single notifier ID
-          - "[https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX](https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX)"
-          - "[https://your-custom-api-endpoint.com/notify](https://your-custom-api-endpoint.com/notify)"
+          - "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
+          - "https://your-custom-api-endpoint.com/notify"
 
 #===========================================
 #        Notification Channel Configuration
