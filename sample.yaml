@@ -1,61 +1,143 @@
-#===========================================
-#        سرویس‌های تحت مانیتورینگ
-#===========================================
-services:
-  - name: "production-api-service" # نام سرویس جهت نمایش در هشدار ها
-    url: "https://api.my-domain.com/health"
-    
-    expected_status_code: 200 # وضعیت موفقیت‌آمیز رو 200 در نظر بگیر
-    check_period: 60 # هر 60 ثانیه یک‌بار چک کن
-    sleep_on_fail: 300 # اگر سرویس در وضعیت اشتباه بود، برای جلوگیری از اسپم، تا 5 دقیقه بعدش چک نکن
-    # در صورت بروز مشکل، به این کانال‌ها هشدار بفرست
-    targets:
-      - notifier_id: "admins-email-group"
-        recipients:
-          - "admin1@example.com"
-          - "cto@example.com"
-      - notifier_id: "on-call-sms-alert"
-        recipients:
-          - "+989120000001"
-      - notifier_id: "slack-notification-hook"
-        recipients:
-          # شما می‌توانید چندین آدرس وب‌هوک را برای یک شناسه تعریف کنید
-          - "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX"
-          - "https://your-custom-api-endpoint.com/notify"
 
 #===========================================
-#        پیکربندی کانال‌های اطلاع‌رسانی
+#        Services to Monitor
+#===========================================
+
+services:
+  # Service 1: Critical API that must be fully operational and fast.
+  - name: "Production API"
+    url: "https://api.my-company.com/v1/health"
+    # Complex AND condition
+    condition_id: critical-api-health 
+    check_period: 30
+    sleep_on_fail: 120
+    targets:
+      - notifier_id: "on-call-sms"
+        # Urgent SMS for the on-call engineer
+        recipients: 
+          - "+15551234567"
+      - notifier_id: "slack-critical-alerts"
+        recipients: 
+          # Detailed alert for the team
+          - "https://hooks.slack.com/services/CRITICAL_CHANNEL"
+
+  # Service 2: A public website that shouldn't show server errors to users.
+  - name: "Main Website"
+    url: "https://www.my-company.com"
+    # A NOT condition
+    condition_id: "no-server-error-text" 
+    check_period: 300
+    sleep_on_fail: 600
+    targets:
+      - notifier_id: "dev-team-email"
+        # Non-urgent email to the whole team
+        recipients:
+          - "lead.dev@my-company.com"
+          - "backend.team@my-company.com" 
+
+  # Service 3: A service that can be either ready or in maintenance mode.
+  - name: "User Authentication Service"
+    url: "https://auth.my-company.com/status"
+    #A complex OR condition
+    condition_id: "ready-or-maintenance"
+    check_period: 60
+    sleep_on_fail: 300
+    targets:
+      - notifier_id: "slack-info-alerts"
+        recipients: 
+          # Informational-only alert
+          - "https://hooks.slack.com/services/INFO_CHANNEL" 
+
+#===========================================
+#        Notification Channel Configuration
 #===========================================
 notifiers:
-  # ------ سرورهای ایمیل (SMTP) ------
+  # ------ Email (SMTP) ------
   smtp:
-    - id: personal_smtp
-      sender: "notifier@your-domain.com"
+    - id: "dev-team-email"
+      sender: "monitoring@my-company.com"
       password: "your-smtp-password"
-      server: "smtp.your-domain.com"
-      port: 587
+      server: "smtp.my-company.com"
+      port: "587"
 
-  # ------ پنل‌های پیامک (مانند IPPanel) ------
-  ippanel: 
-    - id: work_sms
+  # ------ SMS (IPPanel) ------
+  ippanel:
+    - id: "on-call-sms"
       url: <YOUR_IPPANEL_URL>
       user: <YOUR_IPPANEL_USERNAME>
       pass: <YOUR_IPPANEL_PASSWORD>
 
-  # ------ وب‌هوک‌ها (برای ارسال POST Request با قالب دلخواه) ------
+  # ------ Webhooks ------
   webhook:
-    - id: "slack-notification-hook"
-      # متد HTTP که برای ارسال وب‌هوک استفاده می‌شود (مثلاً POST, PUT)
+    # A detailed, richly-formatted webhook for critical alerts using Slack's Block Kit
+    - id: "slack-critical-alerts"
       method: POST
-      # هدرهای مورد نیاز برای ارسال درخواست
       headers:
         Content-Type: "application/json"
-        Authorization: "Bearer your-secret-token" # مثال برای هدر احراز هویت
-      # بدنه (Body) درخواست با فرمت JSON
-      # شما می‌توانید از متغیرهای قالب برای جایگذاری مقادیر داینامیک استفاده کنید
       json:
-        # متغیر {{ .ServiceName }} با نام سرویس جایگزین می‌شود
-        message: "🔴 Alert: Service '{{ .ServiceName }}' is down!"
-        # متغیر {{ .TimeStamp }} با زمان وقوع خطا جایگزین می‌شود
-        timestamp: "{{ .TimeStamp }}"
-        details: "Request to {{ .URL }} failed."
+        # Fallback text for notifications
+        text: "🚨 CRITICAL ALERT: Service `{{ .ServiceName }}` is DOWN! 🚨" 
+        blocks:
+          - type: "header"
+            text:
+              type: "plain_text"
+              text: "🔴 Service `{{ .ServiceName }}` is Unhealthy"
+          - type: "section"
+            fields:
+              - type: "mrkdwn"
+                text: "*Timestamp:*\n{{ .TimeStamp }}"
+              - type: "mrkdwn"
+                text: "*Endpoint URL:*\n{{ .URL }}"
+          - type: "context"
+            elements:
+              - type: "plain_text"
+                text: "This alert was triggered by Healthy-API Monitoring."
+
+    # A simpler webhook for informational alerts
+    - id: "slack-info-alerts"
+      method: POST
+      headers:
+        Content-Type: "application/json"
+      json:
+        text: "ℹ️ INFO: Service `{{ .ServiceName }}` failed its health check. URL: {{ .URL }}"
+
+#===========================================
+#        Health Check Conditions
+#===========================================
+conditions:
+  # Condition for Service 1: Must be 200 OK, have the right header, AND contain "UP" in the body.
+  - id: "critical-api-health"
+    condition:
+      and:
+        - status_code:
+            code: 200
+        - header:
+            - key: "Content-Type"
+              value: "application/health+json"
+        - regex:
+            # Checks for 'status': "UP" or 'status':"UP"
+            pattern: '"status": ?"UP"' 
+
+  # Condition for Service 2: Healthy if the body does NOT contain "Server Error" or "Database Connection Failed".
+  - id: "no-server-error-text"
+    condition:
+      not:
+        regex:
+          pattern: "Server Error|Database Connection Failed"
+
+  # Condition for Service 3: Handles maintenance mode gracefully.
+  - id: "ready-or-maintenance"
+    condition:
+      or:
+        # Healthy if ready
+        - and: 
+            - status_code:
+                code: 200
+            - regex:
+                pattern: "READY"
+         # Also healthy if in planned maintenance
+        - and: 
+            - status_code:
+                code: 503
+            - regex:
+                pattern: "MAINTENANCE"
