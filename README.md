@@ -137,10 +137,10 @@ The project is designed with a modular architecture to easily accommodate new fe
 ├── model/          # Struct definitions (Service, Notifier, Config, etc.)
 ├── notifier/       # The alert notification system (Email, SMS, etc.)
 │   ├── notifier.go # The main interface for all notifiers
-│   ├── registry.go # Manages and registers different notifiers
 │   ├── mail.go     # SMTP email implementation
 │   ├── sms.go      # IPPanel SMS implementation
 │   └── webhook.go  # Webhook implementation
+├── registry/registry.go        # Manages and registers different notifiers and conditions
 ├── main.go         # The entry point that coordinates all modules
 └── sample.yaml     # An example configuration file
 ```
