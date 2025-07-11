@@ -6,6 +6,13 @@ const (
 	pattern SMSType = "pattern"
 )
 
+type IPPanel struct {
+	ID   string `yaml:"id"`
+	Url  string `yaml:"url"`
+	User string `yaml:"user"`
+	Pass string `yaml:"pass"`
+}
+
 type SendSMSRequest struct {
 	Op          SMSType             `json:"op"`
 	User        string              `json:"user"`

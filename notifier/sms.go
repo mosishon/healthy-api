@@ -42,6 +42,9 @@ func (s *SMSNotifier) GetDataKey() string {
 func (s *SMSNotifier) GetURL() string {
 	return s.URL
 }
+func (s *SMSNotifier) GetName() string {
+	return fmt.Sprintf("SMSNotifier(%s)", s.URL)
+}
 func (s SMSNotifier) Notify(n model.Notification) error {
 
 	client := &http.Client{

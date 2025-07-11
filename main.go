@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"healthy-api/healthcheck"
 	"healthy-api/model"
 	"healthy-api/notifier"
+	"healthy-api/registry"
 )
 
 var configPath string
@@ -24,12 +26,11 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "showing logs or no.")
 }
 
-func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry, logger *log.Logger) int {
+func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
 	ippanelCount := 0
 	for _, ippanel := range cfg.Notifiers.IPPanels {
-		ippanelCount++
-		current := notifierRegistry.Get(ippanel.ID)
-		if current != nil {
+		_, ok := notifierRegistry.Get(ippanel.ID)
+		if ok == true {
 			log.Fatalf("notifier with name %s already exists", ippanel.ID)
 		}
 		notifierInst := &notifier.SMSNotifier{
@@ -38,6 +39,8 @@ func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry
 			URL:    ippanel.Url,
 			Logger: logger,
 		}
+		ippanelCount++
+
 		notifierRegistry.Register(ippanel.ID, notifierInst)
 		logger.Printf("new notifier registered. type:ippanel -> %v\n", notifierInst)
 
@@ -45,12 +48,12 @@ func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry
 	return ippanelCount
 }
 
-func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry, logger *log.Logger) int {
+func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
 	smtpCount := 0
+
 	for _, smtp := range cfg.Notifiers.SMTPs {
-		smtpCount++
-		current := notifierRegistry.Get(smtp.ID)
-		if current != nil {
+		_, ok := notifierRegistry.Get(smtp.ID)
+		if ok == true {
 			log.Fatalf("notifier with name %s already exists", smtp.ID)
 		}
 		notifierInst := &notifier.MailNotifier{
@@ -60,6 +63,8 @@ func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry, l
 			Password: smtp.Password,
 			Logger:   logger,
 		}
+		smtpCount++
+
 		notifierRegistry.Register(smtp.ID, notifierInst)
 		logger.Printf("new notifier registered. type:smtp -> %v\n", notifierInst)
 
@@ -76,12 +81,11 @@ func checkTemplate(templ map[string]interface{}) error {
 	return err
 
 }
-func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry, logger *log.Logger) int {
+func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
 	whCount := 0
 	for _, wh := range cfg.Notifiers.Webhook {
-		whCount++
-		current := notifierRegistry.Get(wh.ID)
-		if current != nil {
+		_, ok := notifierRegistry.Get(wh.ID)
+		if ok == true {
 			log.Fatalf("notifier with name %s already exists", wh.ID)
 		}
 		err := checkTemplate(wh.JSON)
@@ -97,11 +101,39 @@ func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *notifier.Registry
 			Client:   &http.Client{Timeout: time.Second * 15},
 			Logger:   logger,
 		}
+		whCount++
 		notifierRegistry.Register(wh.ID, notifierInst)
 		logger.Printf("new notifier registered. type:webhook -> %v\n", notifierInst)
 
 	}
 	return whCount
+}
+
+func PrintCondition(cond *model.Condition) {
+	bytes, err := json.MarshalIndent(cond, "", "  ")
+	if err != nil {
+		fmt.Println("Error marshalling condition:", err)
+		return
+	}
+	fmt.Println(string(bytes))
+}
+
+func loadConditions(cfg *model.Config, conditionRegistry *registry.Registry[model.Condition], logger *log.Logger) int {
+	cCound := 0
+	for _, cond := range cfg.Conditions {
+
+		_, ok := conditionRegistry.Get(cond.ID)
+		if ok == true {
+			logger.Fatalf("condition with id %s already exists", cond.ID)
+		}
+		if err := cond.Condition.Validate("conditions.condition"); err != nil {
+			logger.Fatalf("error condition is not valid %s", err)
+		}
+		cCound++
+		conditionRegistry.Register(cond.ID, *cond.Condition)
+
+	}
+	return cCound
 }
 
 // TODO We need gracefull shutdown for goroutines.
@@ -121,7 +153,8 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	notifierRegistry := notifier.NewRegistry()
+	notifierRegistry := registry.NewRegistry[notifier.Notifier]()
+	conditionRegistry := registry.NewRegistry[model.Condition]()
 	logger := log.Default()
 	if verbose == false {
 		logger.SetOutput(io.Discard)
@@ -136,20 +169,22 @@ func main() {
 	fmt.Printf("%d webhook regisered.\n", whCount)
 	fmt.Println("---------NOTIFIERS-----------")
 	fmt.Println()
+	cCount := loadConditions(cfg, conditionRegistry, logger)
+	fmt.Printf("%d condition found.\n\n", cCount)
 
 	fmt.Printf("%d service found.\n\n", len(cfg.Services))
 	for n, svc := range cfg.Services {
 		n++
 		fmt.Printf("Service [%d]: %s\n", n, svc.Name)
 		fmt.Println("  URL:", svc.URL)
-		fmt.Println("  Phones:", svc.Targets)
 		fmt.Println("  Period:", svc.CheckPeriod)
+		fmt.Println("  Condition id:", svc.ConditionName)
 		fmt.Println("  SleepOnFail:", svc.SleepOnFail)
 		fmt.Println("  Targets count:", len(svc.Targets))
 		fmt.Println("----")
 		for _, v := range svc.Targets {
-			notifierInst := notifierRegistry.Get(v.NotifierID)
-			if notifierInst == nil {
+			_, ok := notifierRegistry.Get(v.NotifierID)
+			if ok == false {
 				fmt.Printf("\n\n[ERROR] notifier with id: '%s' not found.for service: `%s`\n\n\n", v.NotifierID, svc.Name)
 				os.Exit(1)
 			}
@@ -157,8 +192,9 @@ func main() {
 		}
 
 		hc := healthcheck.HealthChecker{
-			Service:          svc,
-			NotifierRegistry: notifierRegistry,
+			Service:           svc,
+			NotifierRegistry:  notifierRegistry,
+			ConditionRegistry: conditionRegistry,
 			Client: &http.Client{
 				Timeout: time.Duration(15) * time.Second,
 			},

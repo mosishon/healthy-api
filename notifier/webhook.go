@@ -17,6 +17,10 @@ type WebhookNotifier struct {
 	Logger   *log.Logger
 }
 
+func (w *WebhookNotifier) GetName() string {
+	return fmt.Sprintf("WebhookNotifier(%s)", w.HookData.ID)
+}
+
 func executeTemplate(tmplStr string, ctx model.WebhookTemplate) (string, error) {
 	tmpl, err := template.New("tmpl").Parse(tmplStr)
 	if err != nil {
