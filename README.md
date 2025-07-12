@@ -150,11 +150,16 @@ The project is designed with a modular architecture to easily accommodate new fe
 ## 🗺️ Roadmap
 
 - [ ] Implement **Graceful Shutdown** using `context` for better Goroutine management.
-- [ ] Add **Unit Tests** for the `healthcheck` and `notifier` modules.
-- [ ] Support **Response Body Validation** using regular expressions (Regex).
+- [x] Add **Unit Tests** for the `healthcheck` and `notifier` modules.
+- [x] Support **Response Body Validation** using regular expressions (Regex).
 - [ ] Add more notifiers (e.g., **Slack**, **Telegram**).
 - [ ] Persist logs to a file or database for historical analysis.
 - [ ] Develop a simple **Web UI** to display the real-time status of services.
+- [ ] Add cronjob insted of check_period.
+- [ ] enhance logging.
+- [ ] Add response time condition
+- [ ] Add json path condition
+- [ ] Add retry policy 
 
 ---
 
