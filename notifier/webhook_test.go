@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"healthy-api/model"
 	"healthy-api/notifier"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+	"os"
 )
 
 func TestWebhookNotifier_Notify(t *testing.T) {
@@ -44,7 +45,7 @@ func TestWebhookNotifier_Notify(t *testing.T) {
 	wh := &notifier.WebhookNotifier{
 		HookData: hookData,
 		Client:   &http.Client{Timeout: 3 * time.Second},
-		Logger:   log.New(log.Writer(), "[test] ", log.LstdFlags),
+		Logger:   slog.New(slog.NewTextHandler(os.Stdout, nil)),
 	}
 
 	notif := model.Notification{
