@@ -8,6 +8,7 @@ type Service struct {
 	SleepOnFail   int      `yaml:"sleep_on_fail"`
 	ConditionName string   `yaml:"condition_id"`
 	Threshold     int      `yaml:"threshold"` 
+	UserAgent     string   `yaml:"user_agent"`
 }
 
 type Target struct {

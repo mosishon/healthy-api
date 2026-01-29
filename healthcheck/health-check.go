@@ -100,10 +100,15 @@ func (h *HealthChecker) Start() {
 		var resp *http.Response
 		var bodyData []byte
 		
-		// مقدار پیش‌فرض در صورت خطای شبکه یا نیل بودن ریسپانس
 		evaluationRes := model.EvaluationResult{
 			IsHealthy: false,
 			Reason:    "Unknown error",
+		}
+		if h.Service.UserAgent != "" {
+			request.Header.Set("User-Agent", h.Service.UserAgent)
+		} else {
+			h.Logger.Printf("[!] Using default user agent")
+			request.Header.Set("User-Agent", "HealthyAPI(M.A)/1.0")
 		}
 
 		// ارسال درخواست

@@ -205,6 +205,9 @@ func main() {
 		fmt.Println("  Condition id:", svc.ConditionName)
 		fmt.Println("  SleepOnFail:", svc.SleepOnFail)
 		fmt.Println("  Targets count:", len(svc.Targets))
+		fmt.Println("  User-Agent:", svc.UserAgent)
+		fmt.Println("  Threshold:", svc.Threshold)
+	
 		fmt.Println("----")
 		for _, v := range svc.Targets {
 			_, ok := notifierRegistry.Get(v.NotifierID)
