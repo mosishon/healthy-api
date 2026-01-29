@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"healthy-api/model"
-	"log"
 	"net/smtp"
+	"log/slog"
+
 )
 
 type MailNotifier struct {
@@ -13,7 +14,7 @@ type MailNotifier struct {
 	Server   string
 	Port     string
 	Password string
-	Logger   *log.Logger
+	Logger   *slog.Logger
 }
 
 func (m *MailNotifier) CreateMessage(serviceName string, to string, subject string) string {
@@ -30,11 +31,9 @@ func (m *MailNotifier) Notify(n model.Notification) error {
 			msg := m.CreateMessage(n.ServiceName, target, "Alert")
 			err := smtp.SendMail(addr, auth, m.Sender, []string{mail}, bytes.NewBufferString(msg).Bytes())
 			if err != nil {
-				m.Logger.Printf("error while sending mail to :%s,addr=%v\n", target, addr)
-				// return fmt.Errorf("error while sending mail to %s:%w", target, err)
+				m.Logger.Error("email_send_failed", "target", target, "addr", addr)				// return fmt.Errorf("error while sending mail to %s:%w", target, err)
 			}
-			m.Logger.Printf("alert sent to %s app-name:%s\n", target, n.ServiceName)
-		}(mail)
+				m.Logger.Info("alert_sent", "target", target, "service", n.ServiceName)		}(mail)
 	}
 	return nil
 }

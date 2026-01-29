@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -26,12 +27,13 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "showing logs or no.")
 }
 
-func loadPayamakPanels(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
+func loadPayamakPanels(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *slog.Logger) int {
 	payamakCount := 0
 	for _, pp := range cfg.Notifiers.MeliPayamakPanels {
 		_, ok := notifierRegistry.Get(pp.ID)
 		if ok {
-			log.Fatalf("notifier with name %s already exists", pp.ID)
+			logger.Error("notifier already exists","name",pp.ID)
+
 		}
 
 		notifierInst := &notifier.PayamakNotifier{
@@ -48,7 +50,7 @@ func loadPayamakPanels(cfg *model.Config, notifierRegistry *registry.Registry[no
 	return payamakCount
 }
 
-func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
+func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *slog.Logger) int {
 	ippanelCount := 0
 	for _, ippanel := range cfg.Notifiers.IPPanels {
 		_, ok := notifierRegistry.Get(ippanel.ID)
@@ -64,13 +66,15 @@ func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *registry.Registry
 		ippanelCount++
 
 		notifierRegistry.Register(ippanel.ID, notifierInst)
-		logger.Printf("new notifier registered. type:ippanel -> %v\n", notifierInst)
-
+		logger.Info("notifier_registered", 
+			"type", "ippanel", 
+			"details", notifierInst,
+		)
 	}
 	return ippanelCount
 }
 
-func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
+func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *slog.Logger) int {
 	smtpCount := 0
 
 	for _, smtp := range cfg.Notifiers.SMTPs {
@@ -88,8 +92,10 @@ func loadSMTPNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[no
 		smtpCount++
 
 		notifierRegistry.Register(smtp.ID, notifierInst)
-		logger.Printf("new notifier registered. type:smtp -> %v\n", notifierInst)
-
+		logger.Info("notifier_registered", 
+			"type",   "smtp", 
+			"details", notifierInst,
+		)
 	}
 	return smtpCount
 }
@@ -103,21 +109,21 @@ func checkTemplate(templ map[string]interface{}) error {
 	return err
 
 }
-func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
+func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *slog.Logger) int {
 	whCount := 0
 	for _, wh := range cfg.Notifiers.Webhook {
 		_, ok := notifierRegistry.Get(wh.ID)
 		if ok == true {
-			log.Fatalf("notifier with name %s already exists", wh.ID)
-		}
+			logger.Error("notifier_already_exists", "id", wh.ID)
+			os.Exit(1)		}
 		err := checkTemplate(wh.JSON)
 		if err != nil {
-			logger.Fatalf("[INVALID TEMPLATE] json template for webhook '%s' is not valid. details:\n%v", wh.ID, err)
-		}
+			logger.Error("invalid_template", "id", wh.ID, "error", err)
+			os.Exit(1)		}
 		err = checkTemplate(wh.Headers)
 		if err != nil {
-			logger.Fatalf("[INVALID TEMPLATE] headers template for webhook '%s' is not valid. details:\n%v", wh.ID, err)
-		}
+			logger.Error("invalid_headers_template", "id", wh.ID, "error", err)
+			os.Exit(1)		}
 		notifierInst := &notifier.WebhookNotifier{
 			HookData: wh,
 			Client:   &http.Client{Timeout: time.Second * 15},
@@ -125,8 +131,11 @@ func loadWebhookNotifiers(cfg *model.Config, notifierRegistry *registry.Registry
 		}
 		whCount++
 		notifierRegistry.Register(wh.ID, notifierInst)
-		logger.Printf("new notifier registered. type:webhook -> %v\n", notifierInst)
-
+		logger.Info("notifier_registered",
+			"type",   "webhook",
+			"id",     wh.ID, // فرض بر اینکه notifierInst فیلد ID دارد
+			"config", notifierInst,    // کل تنظیمات را هم در یک فیلد دیگر نگه می‌دارد
+		)
 	}
 	return whCount
 }
@@ -140,17 +149,17 @@ func PrintCondition(cond *model.Condition) {
 	fmt.Println(string(bytes))
 }
 
-func loadConditions(cfg *model.Config, conditionRegistry *registry.Registry[model.Condition], logger *log.Logger) int {
+func loadConditions(cfg *model.Config, conditionRegistry *registry.Registry[model.Condition], logger *slog.Logger) int {
 	cCound := 0
 	for _, cond := range cfg.Conditions {
 
 		_, ok := conditionRegistry.Get(cond.ID)
 		if ok == true {
-			logger.Fatalf("condition with id %s already exists", cond.ID)
-		}
+			logger.Error("condition_already_exists", "id", cond.ID)
+			os.Exit(1)		}
 		if err := cond.Condition.Validate("conditions.condition"); err != nil {
-			logger.Fatalf("error condition is not valid %s", err)
-		}
+			logger.Error("invalid_error_condition", "error", err)
+			os.Exit(1)		}
 		cCound++
 		conditionRegistry.Register(cond.ID, *cond.Condition)
 
@@ -177,10 +186,26 @@ func main() {
 
 	notifierRegistry := registry.NewRegistry[notifier.Notifier]()
 	conditionRegistry := registry.NewRegistry[model.Condition]()
-	logger := log.Default()
-	if verbose == false {
-		logger.SetOutput(io.Discard)
+	logFile, err := os.OpenFile("app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("failed to open log file: %v", err)
 	}
+	defer logFile.Close() 
+
+	var logOutput io.Writer
+	if verbose {
+		logOutput = io.MultiWriter(os.Stdout, logFile)
+	} else {
+		logOutput = logFile 
+	}
+
+	handler := slog.NewTextHandler(logOutput, &slog.HandlerOptions{
+        Level: slog.LevelInfo, // می‌توانید بر اساس فلگ verbose لول را تغییر دهید
+    })
+
+    logger := slog.New(handler)
+    
+    slog.SetDefault(logger)
 	ippanelCount := loadIPPanelNotifiers(cfg, notifierRegistry, logger)
 	meliPayamakCount := loadPayamakPanels(cfg, notifierRegistry, logger) 
 	smtpCount := loadSMTPNotifiers(cfg, notifierRegistry, logger)

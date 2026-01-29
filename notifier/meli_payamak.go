@@ -3,12 +3,14 @@ package notifier
 import (
 	"bytes"
 	"healthy-api/model"
-	"log"
+	"log/slog"
+
 	"net/http"
 	"net/url"
 	"strings"
 	"text/template"
 	"time"
+	"io"
 )
 
 type PayamakNotifier struct {
@@ -16,7 +18,7 @@ type PayamakNotifier struct {
 	Password string
 	Sender   string
 	Template string
-	Logger   *log.Logger
+	Logger   *slog.Logger
 }
 
 func (p *PayamakNotifier) Notify(notification model.Notification) error {
@@ -48,11 +50,34 @@ func (p *PayamakNotifier) Notify(notification model.Notification) error {
 		data.Set("isFlash", "false")
 
 		resp, err := client.Post(baseURL, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
+		
 		if err != nil {
-			p.Logger.Printf("[PayamakPanel Error] %s: %v\n", number, err)
+			p.Logger.Error("network_request_failed",
+				"provider", "payamak_panel",
+				"target",   number,
+				"error",    err,
+			)			
 			continue
 		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		responseString := string(bodyBytes)
 		resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK || len(responseString) < 5 { 
+			p.Logger.Error("sms_delivery_failed",
+				"provider", "payamak_panel",
+				"target",   number,
+				"status",   resp.Status,
+				"response", responseString,
+			)
+		} else {
+			p.Logger.Info("sms_delivery_success",
+				"provider", "payamak_panel",
+				"target",   number,
+				"result_id", responseString, 
+			)
+		}
 	}
 	return nil
 }

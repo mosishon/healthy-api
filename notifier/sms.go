@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"healthy-api/model"
 	"io"
-	"log"
 	"net/http"
 	"time"
+	"log/slog"
+
 )
 
 type SMSNotifier struct {
 	User   string
 	Pass   string
 	URL    string
-	Logger *log.Logger
+	Logger *slog.Logger
 }
 
 func newSendSMSHeader() http.Header {
@@ -80,8 +81,7 @@ func (s SMSNotifier) Notify(n model.Notification) error {
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("Error response code is %d. Body: %s", resp.StatusCode, string(bodyData))
 		}
-		s.Logger.Printf("[SMS] Sent to %s, status=%d, body=%s\n", target, resp.StatusCode, string(bodyData))
-	}
+s.Logger.Info("sms_sent", "target", target, "status", resp.StatusCode, "body", string(bodyData))	}
 
 	return nil
 }

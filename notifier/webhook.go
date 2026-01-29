@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"healthy-api/model"
-	"log"
+	"log/slog"
 	"net/http"
 	"text/template"
 	"time"
@@ -14,7 +14,7 @@ import (
 type WebhookNotifier struct {
 	HookData model.Webhook
 	Client   *http.Client
-	Logger   *log.Logger
+	Logger   *slog.Logger
 }
 
 func (w *WebhookNotifier) GetName() string {
@@ -85,8 +85,7 @@ func (w *WebhookNotifier) sendRequest(url string, headers map[string]interface{}
 		if valStr, ok := v.(string); ok {
 			req.Header.Set(k, valStr)
 		} else {
-			w.Logger.Printf("invalid header value for key %s: not a string", k)
-		}
+		w.Logger.Error("invalid_header_value", "key", k, "error", "not_a_string")		}
 	}
 	resp, err := w.Client.Do(req)
 	if err != nil {
@@ -94,7 +93,7 @@ func (w *WebhookNotifier) sendRequest(url string, headers map[string]interface{}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		w.Logger.Printf("bad status code: %d\n", resp.StatusCode)
+		w.Logger.Error("bad_status_code", "status", resp.StatusCode)
 		return fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 
@@ -124,10 +123,10 @@ func (w *WebhookNotifier) Notify(n model.Notification) error {
 
 		go func(rec string, hdr map[string]interface{}, body []byte) {
 			if err := w.sendRequest(rec, hdr, body); err != nil {
-				w.Logger.Printf("[WebhookNotifier] failed to send request to %s: %v", rec, err)
-			} else {
-				w.Logger.Printf("[WebhookNotifier] sent webhook to %s successfully", rec)
-			}
+				w.Logger.Error("webhook_request_failed", "target", rec, "error", err)
+					} else {
+				w.Logger.Info("webhook_sent_success", "target", rec)		
+				}
 
 		}(recipient, filledHeaders, bodyBytes)
 	}
