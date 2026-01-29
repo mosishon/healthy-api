@@ -2,7 +2,6 @@ package notifier
 
 import (
 	"bytes"
-	"fmt"
 	"healthy-api/model"
 	"log"
 	"net/http"

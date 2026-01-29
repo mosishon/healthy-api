@@ -50,6 +50,10 @@ type HeaderCondition struct {
 type ResponseTimeCondition struct {
 	MaxDuration string `yaml:"max_duration"`
 }
+type EvaluationResult struct {
+	IsHealthy bool
+	Reason    string
+}
 
 func (c *Condition) Validate(path string) error {
 	count := 0
@@ -96,45 +100,102 @@ func (c *Condition) Validate(path string) error {
 	}
 	return nil
 }
-func (c *Condition) Evaluate(resp *http.Response, body []byte,duration time.Duration) bool {
+func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Duration) EvaluationResult {
+	// 1. منطق AND
 	if c.And != nil {
 		for _, cond := range c.And {
-			if !cond.Evaluate(resp, body,duration) {
-				return false
+			res := cond.Evaluate(resp, body, duration)
+			if !res.IsHealthy {
+				return res
 			}
 		}
-		return true
+		return EvaluationResult{IsHealthy: true}
 	}
-	if c.Or != nil {
 
-		for _, cond := range c.Or {
-			if cond.Evaluate(resp, body,duration) {
-				return true
+	// 2. منطق OR
+	if c.Or != nil {
+		var reasons []string
+		for i, cond := range c.Or {
+			res := cond.Evaluate(resp, body, duration)
+			if res.IsHealthy {
+				return EvaluationResult{IsHealthy: true}
+			}
+			reasons = append(reasons, fmt.Sprintf("OR[%d]: %s", i, res.Reason))
+		}
+		return EvaluationResult{
+			IsHealthy: false,
+			Reason:    fmt.Sprintf("All OR conditions failed: %v", reasons),
+		}
+	}
+
+	// 3. منطق NOT
+	if c.Not != nil {
+    res := c.Not.Evaluate(resp, body, duration)
+    if res.IsHealthy {
+        return EvaluationResult{
+            IsHealthy: false,
+            Reason:    "Forbidden condition matched (Service should not have met this condition)",
+        }
+    }
+    return EvaluationResult{IsHealthy: true}
+}
+
+	// 4. بررسی Regex
+	if c.Regex != nil {
+		matched, _ := regexp.Match(c.Regex.Regex, body)
+		if !matched {
+			return EvaluationResult{
+				IsHealthy: false,
+				Reason:    fmt.Sprintf("Regex pattern '%s' not found in body", c.Regex.Regex),
 			}
 		}
-		return false
+		return EvaluationResult{IsHealthy: true}
 	}
-	if c.Not != nil {
-		return !c.Not.Evaluate(resp, body,duration)
-	}
-	if c.Regex != nil {
-		return c.Regex.Evaluate(body)
-	}
+
+	// 5. بررسی StatusCode
 	if c.StatusCode != nil {
-		return c.StatusCode.Evaluate(resp)
-	}
-	if c.Header != nil {
-		for _, h := range *c.Header {
-			if matched := h.Evaluate(resp); !matched { 
-                return false
-            }
+		if resp == nil {
+			return EvaluationResult{IsHealthy: false, Reason: "No response received"}
 		}
-		return true
+		if resp.StatusCode != c.StatusCode.Code {
+			return EvaluationResult{
+				IsHealthy: false,
+				Reason:    fmt.Sprintf("Expected status %d, but got %d", c.StatusCode.Code, resp.StatusCode),
+			}
+		}
+		return EvaluationResult{IsHealthy: true}
 	}
+
+	// 6. بررسی Headers
+	if c.Header != nil {
+		if resp == nil {
+			return EvaluationResult{IsHealthy: false, Reason: "No response headers available"}
+		}
+		for _, h := range *c.Header {
+			actual := resp.Header.Get(h.Key)
+			if actual != h.Value {
+				return EvaluationResult{
+					IsHealthy: false,
+					Reason:    fmt.Sprintf("Header '%s' expected '%s', got '%s'", h.Key, h.Value, actual),
+				}
+			}
+		}
+		return EvaluationResult{IsHealthy: true}
+	}
+
+	// 7. بررسی Response Time
 	if c.ResponseTime != nil {
-		return c.ResponseTime.Evaluate(duration)
+		max, _ := time.ParseDuration(c.ResponseTime.MaxDuration)
+		if duration > max {
+			return EvaluationResult{
+				IsHealthy: false,
+				Reason:    fmt.Sprintf("Response time %v exceeded limit %v", duration, max),
+			}
+		}
+		return EvaluationResult{IsHealthy: true}
 	}
-	return false
+
+	return EvaluationResult{IsHealthy: false, Reason: "No valid condition defined"}
 }
 
 func (r *RegexCondition) Evaluate(body []byte) bool {

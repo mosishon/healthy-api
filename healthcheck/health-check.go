@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+	"fmt"
 )
 
 type HealthChecker struct {
@@ -98,58 +99,79 @@ func (h *HealthChecker) Start() {
 		
 		var resp *http.Response
 		var bodyData []byte
-		isHealthy := false
+		
+		// مقدار پیش‌فرض در صورت خطای شبکه یا نیل بودن ریسپانس
+		evaluationRes := model.EvaluationResult{
+			IsHealthy: false,
+			Reason:    "Unknown error",
+		}
 
-		// اگر ساخت ریکوئست خطا نداشت، ارسالش کن
+		// ارسال درخواست
 		if err == nil {
 			resp, err = h.Client.Do(request)
 		}
 		
 		requestDuration := time.Since(start)
 
-		if err == nil && resp != nil {
+		if err != nil {
+			// در صورت خطای شبکه (مثل خاموش بودن سرور مقصد)
+			evaluationRes.Reason = fmt.Sprintf("Network/Connection Error: %v", err)
+		} else if resp != nil {
+			// خواندن بادی و بستن فوری آن برای جلوگیری از Memory Leak
 			bodyData, _ = io.ReadAll(resp.Body)
-			resp.Body.Close()
+			resp.Body.Close() 
 			
 			cond, ok := h.ConditionRegistry.Get(h.Service.ConditionName)
 			if ok {
-				isHealthy = cond.Evaluate(resp, bodyData, requestDuration)
+				// ارزیابی تمام شرط‌ها و گرفتن دلیل (Reason)
+				evaluationRes = cond.Evaluate(resp, bodyData, requestDuration)
+			} else {
+				evaluationRes.Reason = "Condition registry not found"
 			}
 		}
 
-		if !isHealthy {
+		if !evaluationRes.IsHealthy {
 			failureCount++
 			
-			// مدیریت لاگ برای جلوگیری از کرش (اگر resp نیل بود 0 چاپ شود)
 			sCode := 0
 			if resp != nil {
 				sCode = resp.StatusCode
 			}
 			
-			h.Logger.Printf("FAIL %s [%d/%d] - Status: %d, Time: %v", 
-				h.Service.Name, failureCount, h.Service.Threshold, sCode, requestDuration)
+			// چاپ در کنسول با ذکر دلیل دقیق
+			h.Logger.Printf("FAIL %s [%d/%d] - Status: %d, Time: %v, Reason: %s", 
+				h.Service.Name, failureCount, h.Service.Threshold, sCode, requestDuration, evaluationRes.Reason)
 
 			if failureCount >= h.Service.Threshold {
-				h.Logger.Printf("Threshold reached for %s. Notifying...", h.Service.Name)
+				h.Logger.Printf("Threshold reached for %s. Sending notifications...", h.Service.Name)
+				
 				for _, target := range h.Service.Targets {
 					if n, ok := h.NotifierRegistry.Get(target.NotifierID); ok {
-						n.Notify(model.Notification{
+						_ = n.Notify(model.Notification{
 							ServiceName: h.Service.Name,
 							Recipients:  target.Recipients,
+							Reason:      evaluationRes.Reason, 
+							StatusCode:   sCode,                    
+                    		ResponseTime: requestDuration.Round(time.Millisecond).String(),
+							
 						})
 					}
 				}
+				
 				time.Sleep(time.Duration(h.Service.SleepOnFail) * time.Second)
+				failureCount = 0 // ریست کردن پس از اطلاع‌رسانی برای شروع سیکل جدید
 			} else {
 				time.Sleep(time.Duration(h.Service.CheckPeriod) * time.Second)
 			}
 		} else {
+			// اگر سرویس سالم بود
 			if failureCount > 0 {
 				h.Logger.Printf("Service %s is back to NORMAL after %d failures", h.Service.Name, failureCount)
 			}
 			failureCount = 0
-			// لاگ موفقیت (اختیاری)
-			// h.Logger.Printf("SUCCESS %s - Time: %v", h.Service.Name, requestDuration)
+			
+			h.Logger.Printf("SUCCESS %s - Time: %v", h.Service.Name, requestDuration)
+			
 			time.Sleep(time.Duration(h.Service.CheckPeriod) * time.Second)
 		}
 	}

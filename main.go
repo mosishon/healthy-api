@@ -28,7 +28,7 @@ func init() {
 
 func loadPayamakPanels(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
 	payamakCount := 0
-	for _, pp := range cfg.Notifiers.PayamakPanels {
+	for _, pp := range cfg.Notifiers.MeliPayamakPanels {
 		_, ok := notifierRegistry.Get(pp.ID)
 		if ok {
 			log.Fatalf("notifier with name %s already exists", pp.ID)
@@ -188,7 +188,7 @@ func main() {
 	fmt.Println()
 	fmt.Println("---------NOTIFIERS-----------")
 	fmt.Printf("%d ippanel regisered.\n", ippanelCount)
-	fmt.Printf("%d meli_payamak_panel registered.\n", payamakCount) // اضافه شد
+	fmt.Printf("%d meli_payamak_panel registered.\n", meliPayamakCount)
 	fmt.Printf("%d smtp regisered.\n", smtpCount)
 	fmt.Printf("%d webhook regisered.\n", whCount)
 	fmt.Println("---------NOTIFIERS-----------")
