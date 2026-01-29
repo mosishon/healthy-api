@@ -26,6 +26,28 @@ func init() {
 	flag.BoolVar(&verbose, "verbose", false, "showing logs or no.")
 }
 
+func loadPayamakPanels(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
+	payamakCount := 0
+	for _, pp := range cfg.Notifiers.PayamakPanels {
+		_, ok := notifierRegistry.Get(pp.ID)
+		if ok {
+			log.Fatalf("notifier with name %s already exists", pp.ID)
+		}
+
+		notifierInst := &notifier.PayamakNotifier{
+			Username: pp.Username,
+			Password: pp.Password,
+			Sender:   pp.Sender,
+			Template: pp.Template,
+			Logger:   logger,
+		}
+		
+		payamakCount++
+		notifierRegistry.Register(pp.ID, notifierInst)
+	}
+	return payamakCount
+}
+
 func loadIPPanelNotifiers(cfg *model.Config, notifierRegistry *registry.Registry[notifier.Notifier], logger *log.Logger) int {
 	ippanelCount := 0
 	for _, ippanel := range cfg.Notifiers.IPPanels {
@@ -160,11 +182,13 @@ func main() {
 		logger.SetOutput(io.Discard)
 	}
 	ippanelCount := loadIPPanelNotifiers(cfg, notifierRegistry, logger)
+	meliPayamakCount := loadPayamakPanels(cfg, notifierRegistry, logger) 
 	smtpCount := loadSMTPNotifiers(cfg, notifierRegistry, logger)
 	whCount := loadWebhookNotifiers(cfg, notifierRegistry, logger)
 	fmt.Println()
 	fmt.Println("---------NOTIFIERS-----------")
 	fmt.Printf("%d ippanel regisered.\n", ippanelCount)
+	fmt.Printf("%d meli_payamak_panel registered.\n", payamakCount) // اضافه شد
 	fmt.Printf("%d smtp regisered.\n", smtpCount)
 	fmt.Printf("%d webhook regisered.\n", whCount)
 	fmt.Println("---------NOTIFIERS-----------")

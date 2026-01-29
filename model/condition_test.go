@@ -91,3 +91,74 @@ func TestCondition_EvaluateComplexNested(t *testing.T) {
 		}
 	})
 }
+
+
+func TestResponseTimeCondition(t *testing.T) {
+	// ۱. تست شرط Response Time به تنهایی
+	cond := &Condition{
+		ResponseTime: &ResponseTimeCondition{
+			MaxDuration: "500ms",
+		},
+	}
+
+	// حالت موفق: زمان واقعی ۲۰۰ میلی ثانیه (کمتر از ۵۰۰)
+	if !cond.Evaluate(nil, nil, 200*time.Millisecond) {
+		t.Errorf("Expected true for 200ms when limit is 500ms")
+	}
+
+	// حالت شکست: زمان واقعی ۶۰۰ میلی ثانیه (بیشتر از ۵۰۰)
+	if cond.Evaluate(nil, nil, 600*time.Millisecond) {
+		t.Errorf("Expected false for 600ms when limit is 500ms")
+	}
+}
+
+func TestCombinedCondition(t *testing.T) {
+	// ۲. تست ترکیبی: کد ۲٠٠ باشد AND زمان پاسخ زیر ۵۰۰ میلی ثانیه باشد
+	cond := &Condition{
+		And: []*Condition{
+			{StatusCode: &StatusCodeCondition{Code: 200}},
+			{ResponseTime: &ResponseTimeCondition{MaxDuration: "500ms"}},
+		},
+	}
+
+	resp200 := &http.Response{StatusCode: 200}
+	resp500 := &http.Response{StatusCode: 500}
+
+	// موفق: هر دو شرط برقرار است
+	if !cond.Evaluate(resp200, nil, 100*time.Millisecond) {
+		t.Errorf("Should be healthy with status 200 and fast response")
+	}
+
+	// شکست: کد ۲٠٠ است اما سرعت پایین است
+	if cond.Evaluate(resp200, nil, 700*time.Millisecond) {
+		t.Errorf("Should fail because response is too slow")
+	}
+
+	// شکست: سرعت بالاست اما کد ۵٠٠ است
+	if cond.Evaluate(resp500, nil, 100*time.Millisecond) {
+		t.Errorf("Should fail because status code is 500")
+	}
+}
+
+func TestValidation(t *testing.T) {
+	// ۳. تست اعتبارسنجی فرمت زمان
+	invalidCond := &Condition{
+		ResponseTime: &ResponseTimeCondition{
+			MaxDuration: "invalid-time",
+		},
+	}
+
+	if err := invalidCond.Validate("test"); err == nil {
+		t.Error("Validation should fail for invalid duration format")
+	}
+
+	validCond := &Condition{
+		ResponseTime: &ResponseTimeCondition{
+			MaxDuration: "1.5s",
+		},
+	}
+
+	if err := validCond.Validate("test"); err != nil {
+		t.Errorf("Validation should pass for '1.5s', got: %v", err)
+	}
+}

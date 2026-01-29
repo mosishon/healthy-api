@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"time"
+
 )
 
 type ConditionType string
@@ -15,6 +17,7 @@ const (
 	ConditionAnd        ConditionType = "and"
 	ConditionOr         ConditionType = "or"
 	ConditionNot        ConditionType = "not"
+	ConditionResponseTime ConditionType = "response_time"
 )
 
 type Condition struct {
@@ -24,6 +27,7 @@ type Condition struct {
 	Regex      *RegexCondition      `yaml:"regex,omitempty"`
 	StatusCode *StatusCodeCondition `yaml:"status_code,omitempty"`
 	Header     *[]HeaderCondition   `yaml:"header,omitempty"`
+	ResponseTime *ResponseTimeCondition `yaml:"response_time,omitempty"`
 }
 
 type NamedCondition struct {
@@ -42,6 +46,9 @@ type StatusCodeCondition struct {
 type HeaderCondition struct {
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
+}
+type ResponseTimeCondition struct {
+	MaxDuration string `yaml:"max_duration"`
 }
 
 func (c *Condition) Validate(path string) error {
@@ -64,8 +71,16 @@ func (c *Condition) Validate(path string) error {
 	if c.Not != nil {
 		count++
 	}
+	if c.ResponseTime != nil {
+		count++
+	}
 	if count != 1 {
 		return fmt.Errorf("a condition node must contain exactly one field (got %d) at %s", count, path)
+	}
+	if c.ResponseTime != nil {
+		if _, err := time.ParseDuration(c.ResponseTime.MaxDuration); err != nil {
+			return fmt.Errorf("invalid duration format '%s' at %s: %v", c.ResponseTime.MaxDuration, path, err)
+		}
 	}
 	for _, and := range c.And {
 		path = path + "." + "and"
@@ -81,10 +96,10 @@ func (c *Condition) Validate(path string) error {
 	}
 	return nil
 }
-func (c *Condition) Evaluate(resp *http.Response, body []byte) bool {
+func (c *Condition) Evaluate(resp *http.Response, body []byte,duration time.Duration) bool {
 	if c.And != nil {
 		for _, cond := range c.And {
-			if !cond.Evaluate(resp, body) {
+			if !cond.Evaluate(resp, body,duration) {
 				return false
 			}
 		}
@@ -93,14 +108,14 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte) bool {
 	if c.Or != nil {
 
 		for _, cond := range c.Or {
-			if cond.Evaluate(resp, body) {
+			if cond.Evaluate(resp, body,duration) {
 				return true
 			}
 		}
 		return false
 	}
 	if c.Not != nil {
-		return !c.Not.Evaluate(resp, body)
+		return !c.Not.Evaluate(resp, body,duration)
 	}
 	if c.Regex != nil {
 		return c.Regex.Evaluate(body)
@@ -110,11 +125,14 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte) bool {
 	}
 	if c.Header != nil {
 		for _, h := range *c.Header {
-			if err := h.Evaluate(resp); err == false {
-				return false
-			}
+			if matched := h.Evaluate(resp); !matched { 
+                return false
+            }
 		}
 		return true
+	}
+	if c.ResponseTime != nil {
+		return c.ResponseTime.Evaluate(duration)
 	}
 	return false
 }
@@ -132,6 +150,14 @@ func (s *StatusCodeCondition) Evaluate(resp *http.Response) bool {
 func (h *HeaderCondition) Evaluate(resp *http.Response) bool {
 
 	return resp.Header.Get(h.Key) == h.Value
+}
+
+func (rt *ResponseTimeCondition) Evaluate(actual time.Duration) bool {
+	max, err := time.ParseDuration(rt.MaxDuration)
+	if err != nil {
+		return false 
+	}
+	return actual <= max
 }
 
 // TODO: jsonpath condition

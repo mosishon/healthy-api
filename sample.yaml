@@ -11,6 +11,7 @@ services:
     condition_id: critical-api-health 
     check_period: 30
     sleep_on_fail: 120
+    threshold: 3      # یعنی فقط بعد از ۳ بار خطای متوالی خبر بده
     targets:
       - notifier_id: "on-call-sms"
         # Urgent SMS for the on-call engineer
@@ -67,6 +68,13 @@ notifiers:
       user: <YOUR_IPPANEL_USERNAME>
       pass: <YOUR_IPPANEL_PASSWORD>
 
+  meli_payamak_panel:
+    - id: "sms-admin"
+      username: "myuser"
+      password: "mypassword"
+      sender: "50001234"
+      # استفاده از تمپلیت سفارشی
+      template: "هشدار! سرویس {{.ServiceName}} از دسترس خارج شد. لطفا بررسی کنید."
   # ------ Webhooks ------
   webhook:
     # A detailed, richly-formatted webhook for critical alerts using Slack's Block Kit
@@ -141,3 +149,10 @@ conditions:
                 code: 503
             - regex:
                 pattern: "MAINTENANCE"
+  - id: "fast-response-only"
+    condition:
+      and:
+        - status_code:
+            code: 200
+        - response_time:
+            max_duration: "500ms" 

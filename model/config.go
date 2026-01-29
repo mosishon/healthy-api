@@ -7,6 +7,7 @@ type Service struct {
 	CheckPeriod   int      `yaml:"check_period"`
 	SleepOnFail   int      `yaml:"sleep_on_fail"`
 	ConditionName string   `yaml:"condition_id"`
+	Threshold     int      `yaml:"threshold"` 
 }
 
 type Target struct {
@@ -18,6 +19,7 @@ type Notifiers struct {
 	IPPanels []IPPanel `yaml:"ippanel"`
 	SMTPs    []SMTP    `yaml:"smtp"`
 	Webhook  []Webhook `yaml:"webhook"`
+	MeliPayamakPanels []MeliPayamakPanel `yaml:"meli_payamak_panel"`
 }
 
 type SMTP struct {
