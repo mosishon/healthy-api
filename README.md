@@ -157,9 +157,9 @@ The project is designed with a modular architecture to easily accommodate new fe
 - [ ] Develop a simple **Web UI** to display the real-time status of services.
 - [ ] Add cronjob insted of check_period.
 - [ ] enhance logging.
-- [ ] Add response time condition
+- [x] Add response time condition
 - [ ] Add json path condition
-- [ ] Add retry policy 
+- [x] Add retry policy 
 
 ---
 
