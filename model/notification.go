@@ -23,15 +23,15 @@ type TemplateGroup struct {
 	HttpError       string `yaml:"http_error"`
 	SlowResponse    string `yaml:"slow_response"`
 	ConditionFailed string `yaml:"condition_failed"`
-	Recovery       string `yaml:"recovery"`
-	Default        string `yaml:"default"`
+	Recovery        string `yaml:"recovery"`
+	Default         string `yaml:"default"`
 }
 
 const (
 	DefaultNetworkErrorTemplate    = "[🔌 Network Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
 	DefaultHttpErrorTemplate       = "[❌ HTTP Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
 	DefaultSlowResponseTemplate    = "[⏱️ Latency Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
-	DefaultConditionFailedTemplate = "[🔍 Validation Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
+	DefaultConditionFailedTemplate = "[🔍 Validation Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\nStatus Code: {{.Metadata.StatusCode}}\nFailure Count: {{.Metadata.FailureCount}}\n\n{{.Metadata.Reason}}"
 	DefaultRecoveryTemplate        = "[✅ Recovery] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: Service is now Healthy"
 	DefaultNotificationTemplate    = "[🔔 Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: {{.Metadata.Status}}"
 )

@@ -56,8 +56,8 @@ const (
 	NotificationHttpError       NotificationType = "http_error"
 	NotificationSlowResponse    NotificationType = "slow_response"
 	NotificationConditionFailed NotificationType = "condition_failed"
-	NotificationRecovery       NotificationType = "recovery"
-	NotificationDefault        NotificationType = "default"
+	NotificationRecovery        NotificationType = "recovery"
+	NotificationDefault         NotificationType = "default"
 )
 
 type EvaluationResult struct {
@@ -123,7 +123,7 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Dur
 			// Inversion: The forbidden condition matched!
 			var wrappedReasons []string
 			for _, r := range res.Reason {
-				wrappedReasons = append(wrappedReasons, "✘ Forbidden state matched: "+r)
+				wrappedReasons = append(wrappedReasons, "✘ Forbidden state matched (NOT): "+r)
 			}
 			return EvaluationResult{
 				IsHealthy: false,
