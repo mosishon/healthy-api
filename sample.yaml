@@ -12,6 +12,7 @@ services:
     check_period: 30
     sleep_on_fail: 120
     threshold: 3      # یعنی فقط بعد از ۳ بار خطای متوالی خبر بده
+    notify_on_recovery: true
     targets:
       - notifier_id: "on-call-sms"
         # Urgent SMS for the on-call engineer
@@ -74,7 +75,7 @@ notifiers:
       password: "mypassword"
       sender: "50001234"
       # استفاده از تمپلیت سفارشی
-      template: "هشدار! سرویس {{.ServiceName}} از دسترس خارج شد. لطفا بررسی کنید."
+      template: "وضعیت سرویس {{.Metadata.ServiceName}} به {{.Metadata.Status}} تغییر یافت."
   # ------ Webhooks ------
   webhook:
     # A detailed, richly-formatted webhook for critical alerts using Slack's Block Kit
@@ -84,18 +85,18 @@ notifiers:
         Content-Type: "application/json"
       json:
         # Fallback text for notifications
-        text: "🚨 CRITICAL ALERT: Service `{{ .ServiceName }}` is DOWN! 🚨" 
+        text: "🚨 ALERT: Service `{{ .Metadata.ServiceName }}` is {{ .Metadata.Status }}! 🚨"
         blocks:
           - type: "header"
             text:
               type: "plain_text"
-              text: "🔴 Service `{{ .ServiceName }}` is Unhealthy"
+              text: "🔔 Service `{{ .Metadata.ServiceName }}` is {{ .Metadata.Status }}"
           - type: "section"
             fields:
               - type: "mrkdwn"
-                text: "*Timestamp:*\n{{ .TimeStamp }}"
+                text: "*Timestamp:*\n{{ .Metadata.Timestamp }}"
               - type: "mrkdwn"
-                text: "*Endpoint URL:*\n{{ .URL }}"
+                text: "*Endpoint URL:*\n{{ .Metadata.ServiceURL }}"
           - type: "context"
             elements:
               - type: "plain_text"
@@ -107,7 +108,7 @@ notifiers:
       headers:
         Content-Type: "application/json"
       json:
-        text: "ℹ️ INFO: Service `{{ .ServiceName }}` failed its health check. URL: {{ .URL }}"
+        text: "ℹ️ INFO: Service `{{ .Metadata.ServiceName }}` status is {{ .Metadata.Status }}. URL: {{ .Metadata.ServiceURL }}"
 
 #===========================================
 #        Health Check Conditions

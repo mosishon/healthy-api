@@ -18,16 +18,17 @@ type HealthChecker struct {
 	ConditionRegistry *registry.Registry[model.Condition]
 	Client            *http.Client
 	Logger            *slog.Logger
+	isDown            bool
+	failureCount      int
 }
 
 func (h *HealthChecker) Start(ctx context.Context) {
 	h.Logger.Info("checker_started", "service", h.Service.Name)
-	failureCount := 0
 
 	for {
 		waitDuration := time.Duration(h.Service.CheckPeriod) * time.Second
 
-		h.performCheck(&failureCount, &waitDuration)
+		h.performCheck(&waitDuration)
 
 		select {
 		case <-ctx.Done():
@@ -38,7 +39,7 @@ func (h *HealthChecker) Start(ctx context.Context) {
 	}
 }
 
-func (h *HealthChecker) performCheck(failureCount *int, nextWait *time.Duration) {
+func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 	start := time.Now()
 	request, err := http.NewRequest("GET", h.Service.URL, nil)
 
@@ -80,18 +81,19 @@ func (h *HealthChecker) performCheck(failureCount *int, nextWait *time.Duration)
 	}
 
 	if !evaluationRes.IsHealthy {
-		*failureCount++
+		h.failureCount++
 
 		h.Logger.Warn("health_check_failed",
 			"service", h.Service.Name,
-			"attempt", *failureCount,
+			"attempt", h.failureCount,
 			"threshold", h.Service.Threshold,
 			"status", sCode,
 			"duration", requestDuration,
 			"reason", evaluationRes.Reason)
 
-		if *failureCount >= h.Service.Threshold {
+		if h.failureCount >= h.Service.Threshold {
 			h.Logger.Error("threshold_reached", "service", h.Service.Name, "action", "sending_notifications")
+			h.isDown = true
 
 			metadata := model.NotificationMetadata{
 				ServiceName:  h.Service.Name,
@@ -100,8 +102,9 @@ func (h *HealthChecker) performCheck(failureCount *int, nextWait *time.Duration)
 				StatusCode:   sCode,
 				ResponseTime: requestDuration.Round(time.Millisecond).String(),
 				Timestamp:    time.Now().Format(time.RFC3339),
-				FailureCount: *failureCount,
+				FailureCount: h.failureCount,
 				Threshold:    h.Service.Threshold,
+				Status:       "DOWN",
 			}
 
 			for _, target := range h.Service.Targets {
@@ -114,13 +117,37 @@ func (h *HealthChecker) performCheck(failureCount *int, nextWait *time.Duration)
 			}
 
 			*nextWait = time.Duration(h.Service.SleepOnFail) * time.Second
-			*failureCount = 0 // Reset after notification as per original logic
+			h.failureCount = 0 // Reset after notification as per original logic
 		}
 	} else {
-		if *failureCount > 0 {
-			h.Logger.Info("service_recovery", "service", h.Service.Name, "after_failures", *failureCount)
+		if h.isDown {
+			h.Logger.Info("service_recovery", "service", h.Service.Name)
+			if h.Service.NotifyOnRecovery {
+				metadata := model.NotificationMetadata{
+					ServiceName:  h.Service.Name,
+					ServiceURL:   h.Service.URL,
+					Reason:       "Service recovered",
+					StatusCode:   sCode,
+					ResponseTime: requestDuration.Round(time.Millisecond).String(),
+					Timestamp:    time.Now().Format(time.RFC3339),
+					FailureCount: 0,
+					Threshold:    h.Service.Threshold,
+					Status:       "UP",
+				}
+				for _, target := range h.Service.Targets {
+					if n, ok := h.NotifierRegistry.Get(target.NotifierID); ok {
+						_ = n.Notify(model.Notification{
+							Metadata:   metadata,
+							Recipients: target.Recipients,
+						})
+					}
+				}
+			}
+			h.isDown = false
+		} else if h.failureCount > 0 {
+			h.Logger.Info("service_recovered_before_threshold", "service", h.Service.Name, "after_failures", h.failureCount)
 		}
-		*failureCount = 0
+		h.failureCount = 0
 		h.Logger.Info("health_check_success", "service", h.Service.Name, "duration", requestDuration, "status_code", sCode)
 	}
 }

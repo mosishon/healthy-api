@@ -27,7 +27,7 @@ func (p *PayamakNotifier) Notify(notification model.Notification) error {
 	tmpl, err := template.New("sms").Parse(p.Template)
 	if err != nil {
 		// اگر تمپلیت مشکل داشت، یک متن پیش‌فرض استفاده کن
-		p.Template = "Service {{.Metadata.ServiceName}} is DOWN!"
+		p.Template = "Service {{.Metadata.ServiceName}} is {{.Metadata.Status}}!"
 		tmpl, _ = template.New("sms").Parse(p.Template)
 	}
 

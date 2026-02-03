@@ -6,9 +6,10 @@ type Service struct {
 	Targets       []Target `yaml:"targets"`
 	CheckPeriod   int      `yaml:"check_period"`
 	SleepOnFail   int      `yaml:"sleep_on_fail"`
-	ConditionName string   `yaml:"condition_id"`
-	Threshold     int      `yaml:"threshold"` 
-	UserAgent     string   `yaml:"user_agent"`
+	ConditionName    string   `yaml:"condition_id"`
+	Threshold        int      `yaml:"threshold"`
+	UserAgent        string   `yaml:"user_agent"`
+	NotifyOnRecovery bool     `yaml:"notify_on_recovery"`
 }
 
 type Target struct {

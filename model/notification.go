@@ -9,6 +9,7 @@ type NotificationMetadata struct {
 	Timestamp    string
 	FailureCount int
 	Threshold    int
+	Status       string
 }
 
 type Notification struct {
