@@ -25,11 +25,12 @@ type Notifiers struct {
 }
 
 type SMTP struct {
-	ID       string `yaml:"id"`
-	Sender   string `yaml:"sender"`
-	Password string `yaml:"password"`
-	Server   string `yaml:"server"`
-	Port     string `yaml:"port"`
+	ID        string        `yaml:"id"`
+	Sender    string        `yaml:"sender"`
+	Password  string        `yaml:"password"`
+	Server    string        `yaml:"server"`
+	Port      string        `yaml:"port"`
+	Templates TemplateGroup `yaml:"templates"`
 }
 type Config struct {
 	Services   []Service        `yaml:"services"`

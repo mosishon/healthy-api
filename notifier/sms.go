@@ -62,6 +62,9 @@ func (s *SMSNotifier) Notify(n model.Notification) error {
 			InputData: []map[string]string{
 				{s.GetDataKey(): n.Metadata.ServiceName},
 				{"status": n.Metadata.Status},
+				{"url": n.Metadata.ServiceURL},
+				{"reason": n.Metadata.Reason},
+				{"response_time": n.Metadata.ResponseTime},
 			},
 		})
 		if err != nil {

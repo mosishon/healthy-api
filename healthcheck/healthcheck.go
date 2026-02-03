@@ -66,6 +66,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 
 	if err != nil {
 		evaluationRes.Reason = fmt.Sprintf("Network/Connection Error: %v", err)
+		evaluationRes.Type = model.NotificationNetworkError
 	} else if resp != nil {
 		sCode = resp.StatusCode
 
@@ -112,6 +113,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 					_ = n.Notify(model.Notification{
 						Metadata:   metadata,
 						Recipients: target.Recipients,
+						Type:       evaluationRes.Type,
 					})
 				}
 			}
@@ -139,6 +141,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 						_ = n.Notify(model.Notification{
 							Metadata:   metadata,
 							Recipients: target.Recipients,
+							Type:       model.NotificationRecovery,
 						})
 					}
 				}

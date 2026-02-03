@@ -48,11 +48,12 @@ func loadPayamakPanels(cfg *model.Config, reg *registry.Registry[notifier.Notifi
 			continue
 		}
 		notifierInst := &notifier.PayamakNotifier{
-			Username: pp.Username,
-			Password: pp.Password,
-			Sender:   pp.Sender,
-			Template: pp.Template,
-			Logger:   logger,
+			Username:  pp.Username,
+			Password:  pp.Password,
+			Sender:    pp.Sender,
+			Template:  pp.Template,
+			Templates: pp.Templates,
+			Logger:    logger,
 		}
 		reg.Register(pp.ID, notifierInst)
 		logger.Info("notifier_registered", "type", "meli_payamak", "id", pp.ID)
@@ -69,11 +70,12 @@ func loadSMTPNotifiers(cfg *model.Config, reg *registry.Registry[notifier.Notifi
 			continue
 		}
 		notifierInst := &notifier.MailNotifier{
-			Sender:   smtp.Sender,
-			Server:   smtp.Server,
-			Port:     smtp.Port,
-			Password: smtp.Password,
-			Logger:   logger,
+			Sender:    smtp.Sender,
+			Server:    smtp.Server,
+			Port:      smtp.Port,
+			Password:  smtp.Password,
+			Templates: smtp.Templates,
+			Logger:    logger,
 		}
 		reg.Register(smtp.ID, notifierInst)
 		logger.Info("notifier_registered", "type", "smtp", "id", smtp.ID)

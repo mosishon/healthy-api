@@ -15,4 +15,14 @@ type NotificationMetadata struct {
 type Notification struct {
 	Metadata   NotificationMetadata
 	Recipients []string
+	Type       NotificationType
+}
+
+type TemplateGroup struct {
+	NetworkError    string `yaml:"network_error"`
+	HttpError       string `yaml:"http_error"`
+	SlowResponse    string `yaml:"slow_response"`
+	ConditionFailed string `yaml:"condition_failed"`
+	Recovery       string `yaml:"recovery"`
+	Default        string `yaml:"default"`
 }

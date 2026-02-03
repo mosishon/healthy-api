@@ -13,22 +13,49 @@ import (
 )
 
 type PayamakNotifier struct {
-	Username string
-	Password string
-	Sender   string
-	Template string
-	Logger   *slog.Logger
+	Username  string
+	Password  string
+	Sender    string
+	Template  string
+	Templates model.TemplateGroup
+	Logger    *slog.Logger
+}
+
+func (p *PayamakNotifier) selectTemplate(n model.Notification) string {
+	t := p.Templates
+	var tmplStr string
+
+	switch n.Type {
+	case model.NotificationNetworkError:
+		tmplStr = t.NetworkError
+	case model.NotificationHttpError:
+		tmplStr = t.HttpError
+	case model.NotificationSlowResponse:
+		tmplStr = t.SlowResponse
+	case model.NotificationConditionFailed:
+		tmplStr = t.ConditionFailed
+	case model.NotificationRecovery:
+		tmplStr = t.Recovery
+	default:
+		tmplStr = t.Default
+	}
+
+	if tmplStr == "" {
+		return p.Template
+	}
+	return tmplStr
 }
 
 func (p *PayamakNotifier) Notify(notification model.Notification) error {
 	baseURL := "https://rest.payamak-panel.com/api/SendSMS/SendSMS"
 
 	// رندر کردن تمپلیت
-	tmpl, err := template.New("sms").Parse(p.Template)
+	tmplStr := p.selectTemplate(notification)
+	tmpl, err := template.New("sms").Parse(tmplStr)
 	if err != nil {
 		// اگر تمپلیت مشکل داشت، یک متن پیش‌فرض استفاده کن
-		p.Template = "Service {{.Metadata.ServiceName}} is {{.Metadata.Status}}!"
-		tmpl, _ = template.New("sms").Parse(p.Template)
+		tmplStr = "Service {{.Metadata.ServiceName}} is {{.Metadata.Status}}!"
+		tmpl, _ = template.New("sms").Parse(tmplStr)
 	}
 
 	var tpl bytes.Buffer

@@ -100,6 +100,42 @@ func (w *WebhookNotifier) sendRequest(url string, headers map[string]interface{}
 	return nil
 }
 
+func (w *WebhookNotifier) selectTemplate(n model.Notification) map[string]interface{} {
+	// If no templates are defined in the group, use the legacy/direct JSON.
+	// But the user wants intelligent selection.
+	t := w.HookData.Templates
+	var tmplStr string
+
+	switch n.Type {
+	case model.NotificationNetworkError:
+		tmplStr = t.NetworkError
+	case model.NotificationHttpError:
+		tmplStr = t.HttpError
+	case model.NotificationSlowResponse:
+		tmplStr = t.SlowResponse
+	case model.NotificationConditionFailed:
+		tmplStr = t.ConditionFailed
+	case model.NotificationRecovery:
+		tmplStr = t.Recovery
+	default:
+		tmplStr = t.Default
+	}
+
+	if tmplStr == "" {
+		return w.HookData.JSON
+	}
+
+	// If we have a template string, we assume it's a JSON string.
+	// We'll try to unmarshal it.
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(tmplStr), &result); err != nil {
+		// If it's not valid JSON, maybe it's just a message string?
+		// To keep it simple and consistent with the legacy behavior:
+		return w.HookData.JSON
+	}
+	return result
+}
+
 func (w *WebhookNotifier) Notify(n model.Notification) error {
 	for _, recipient := range n.Recipients {
 
@@ -107,11 +143,14 @@ func (w *WebhookNotifier) Notify(n model.Notification) error {
 			Metadata: n.Metadata,
 			URL:      recipient,
 		}
+
+		jsonToUse := w.selectTemplate(n)
+
 		filledHeaders, err := FillTemplate(w.HookData.Headers, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to fill headers template: %w", err)
 		}
-		filledJSON, err := FillTemplate(w.HookData.JSON, ctx)
+		filledJSON, err := FillTemplate(jsonToUse, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to fill JSON template: %w", err)
 		}
