@@ -42,12 +42,12 @@ notifiers:
         # Generic fallback
         text: "⚠️ Alert for {{.Metadata.ServiceName}}"
       templates:
-        network_error:    '{"text": "🔌 *Network Error*: Cannot reach {{.Metadata.ServiceName}}! Reason: {{.Metadata.Reason}}"}'
-        http_error:       '{"text": "❌ *HTTP Error*: {{.Metadata.ServiceName}} returned {{.Metadata.StatusCode}}."}'
-        slow_response:    '{"text": "⏱️ *Latency Alert*: {{.Metadata.ServiceName}} took {{.Metadata.ResponseTime}}."}'
-        condition_failed: '{"text": "🔍 *Logic Failure*: {{.Metadata.ServiceName}} failed health criteria.\n```\n{{.Metadata.Reason}}\n```"}'
-        recovery:         '{"text": "✅ *Service Restored*: {{.Metadata.ServiceName}} is back online!"}'
-        default:          '{"text": "🔔 *Status Update*: {{.Metadata.ServiceName}} is {{.Metadata.Status}}"}'
+        network_error:    '{"text": "🔌 *Network Alert* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"}'
+        http_error:       '{"text": "❌ *HTTP Alert* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"}'
+        slow_response:    '{"text": "⏱️ *Latency Alert* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"}'
+        condition_failed: '{"text": "🔍 *Validation Alert* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"}'
+        recovery:         '{"text": "✅ *Recovery* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: Service is now Healthy"}'
+        default:          '{"text": "🔔 *Status Update* {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: {{.Metadata.Status}}"}'
 
   # ------ Email (SMTP) ------
   smtp:
@@ -57,8 +57,8 @@ notifiers:
       server: "smtp.gmail.com"
       port: "587"
       templates:
-        recovery: "Subject: ✅ Service {{.Metadata.ServiceName}} Recovered\n\nGood news! Service is back up."
-        default:  "Subject: 🚨 Alert: {{.Metadata.ServiceName}} is {{.Metadata.Status}}\n\nReason: {{.Metadata.Reason}}"
+        recovery: "Subject: ✅ Recovery {{.Metadata.ServiceName}}\n\n- Time: {{.Metadata.Timestamp}}\n- Status: Service is now Healthy"
+        default:  "Subject: 🚨 Alert: {{.Metadata.ServiceName}}\n\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
 
   # ------ SMS (MeliPayamak) ------
   meli_payamak_panel:
@@ -67,8 +67,8 @@ notifiers:
       password: "mypassword"
       sender: "50001234"
       templates:
-        recovery: "✅ سرویس {{.Metadata.ServiceName}} به وضعیت عادی بازگشت."
-        default:  "⚠️ هشدار: {{.Metadata.ServiceName}} دچار اختلال شده است. وضعیت: {{.Metadata.Status}}"
+        recovery: "✅ Recovery: {{.Metadata.ServiceName}}\nTime: {{.Metadata.Timestamp}}\nStatus: Healthy"
+        default:  "⚠️ Alert: {{.Metadata.ServiceName}}\nTime: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
 
 #================================================================#
 #        Health Check Conditions                                #

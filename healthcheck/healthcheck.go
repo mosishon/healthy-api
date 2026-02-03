@@ -65,7 +65,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 	sCode := 0
 
 	if err != nil {
-		evaluationRes.Reason = fmt.Sprintf("Network/Connection Error: %v", err)
+		evaluationRes.Reason = fmt.Sprintf("- Reason: %v", err)
 		evaluationRes.Type = model.NotificationNetworkError
 	} else if resp != nil {
 		sCode = resp.StatusCode
