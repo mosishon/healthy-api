@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
-	"os"
 )
 
 func TestWebhookNotifier_Notify(t *testing.T) {
@@ -34,11 +34,11 @@ func TestWebhookNotifier_Notify(t *testing.T) {
 		Method: "POST",
 		Headers: map[string]interface{}{
 			"Content-Type": "application/json",
-			"X-Test":       "{{ .ServiceName }}",
+			"X-Test":       "{{ .Metadata.ServiceName }}",
 		},
 		JSON: map[string]interface{}{
-			"message":   "Service {{ .ServiceName }} is down",
-			"timestamp": "{{ .TimeStamp }}",
+			"message":   "Service {{ .Metadata.ServiceName }} is down",
+			"timestamp": "{{ .Metadata.Timestamp }}",
 			"url":       "{{ .URL }}",
 		},
 	}
@@ -49,8 +49,11 @@ func TestWebhookNotifier_Notify(t *testing.T) {
 	}
 
 	notif := model.Notification{
-		ServiceName: "user-service",
-		Recipients:  []string{server.URL},
+		Metadata: model.NotificationMetadata{
+			ServiceName: "user-service",
+			Timestamp:   "2023-10-27T10:00:00Z",
+		},
+		Recipients: []string{server.URL},
 	}
 
 	err := wh.Notify(notif)

@@ -9,19 +9,22 @@ import (
 
 func TestFillTemplate(t *testing.T) {
 	templateData := map[string]interface{}{
-		"message": "Service '{{ .ServiceName }}' is down!",
+		"message": "Service '{{ .Metadata.ServiceName }}' is down!",
 		"details": map[string]interface{}{
 			"url":       "Checked URL was {{ .URL }}",
-			"timestamp": "{{ .TimeStamp }}",
+			"timestamp": "{{ .Metadata.Timestamp }}",
 		},
 		"static_value": 123,
 	}
 
 	testTime := time.Now()
+	timestamp := testTime.Format(time.RFC3339)
 	context := model.WebhookTemplate{
-		ServiceName: "Login-API",
-		TimeStamp:   testTime.Format(time.RFC3339),
-		URL:         "https://api.example.com/login",
+		Metadata: model.NotificationMetadata{
+			ServiceName: "Login-API",
+			Timestamp:   timestamp,
+		},
+		URL: "https://api.example.com/login",
 	}
 
 	result, err := notifier.FillTemplate(templateData, context)
@@ -47,8 +50,8 @@ func TestFillTemplate(t *testing.T) {
 		t.Errorf("Expected nested url to be '%s', got '%s'", expectedURL, detailsMap["url"])
 	}
 
-	if detailsMap["timestamp"] != context.TimeStamp {
-		t.Errorf("Expected nested timestamp to be '%s', got '%s'", context.TimeStamp, detailsMap["timestamp"])
+	if detailsMap["timestamp"] != context.Metadata.Timestamp {
+		t.Errorf("Expected nested timestamp to be '%s', got '%s'", context.Metadata.Timestamp, detailsMap["timestamp"])
 	}
 
 	// Check that static values are preserved

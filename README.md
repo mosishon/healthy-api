@@ -153,10 +153,10 @@ The project is designed with a modular architecture to easily accommodate new fe
 - [x] Add **Unit Tests** for the `healthcheck` and `notifier` modules.
 - [x] Support **Response Body Validation** using regular expressions (Regex).
 - [ ] Add more notifiers (e.g., **Slack**, **Telegram**).
-- [ ] Persist logs to a file or database for historical analysis.
+- [X] Persist logs to a file or database for historical analysis.
 - [ ] Develop a simple **Web UI** to display the real-time status of services.
 - [ ] Add cronjob insted of check_period.
-- [ ] enhance logging.
+- [X] enhance logging.
 - [x] Add response time condition
 - [ ] Add json path condition
 - [x] Add retry policy 

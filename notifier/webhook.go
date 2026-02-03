@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"text/template"
-	"time"
 )
 
 type WebhookNotifier struct {
@@ -85,7 +84,8 @@ func (w *WebhookNotifier) sendRequest(url string, headers map[string]interface{}
 		if valStr, ok := v.(string); ok {
 			req.Header.Set(k, valStr)
 		} else {
-		w.Logger.Error("invalid_header_value", "key", k, "error", "not_a_string")		}
+			w.Logger.Error("invalid_header_value", "key", k, "error", "not_a_string")
+		}
 	}
 	resp, err := w.Client.Do(req)
 	if err != nil {
@@ -104,9 +104,8 @@ func (w *WebhookNotifier) Notify(n model.Notification) error {
 	for _, recipient := range n.Recipients {
 
 		ctx := model.WebhookTemplate{
-			ServiceName: n.ServiceName,
-			TimeStamp:   time.Now().Format(time.RFC3339),
-			URL:         recipient,
+			Metadata: n.Metadata,
+			URL:      recipient,
 		}
 		filledHeaders, err := FillTemplate(w.HookData.Headers, ctx)
 		if err != nil {
@@ -124,9 +123,9 @@ func (w *WebhookNotifier) Notify(n model.Notification) error {
 		go func(rec string, hdr map[string]interface{}, body []byte) {
 			if err := w.sendRequest(rec, hdr, body); err != nil {
 				w.Logger.Error("webhook_request_failed", "target", rec, "error", err)
-					} else {
-				w.Logger.Info("webhook_sent_success", "target", rec)		
-				}
+			} else {
+				w.Logger.Info("webhook_sent_success", "target", rec)
+			}
 
 		}(recipient, filledHeaders, bodyBytes)
 	}
