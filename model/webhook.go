@@ -1,10 +1,11 @@
 package model
 
 type Webhook struct {
-	ID      string                 `yaml:"id"`
-	Method  string                 `yaml:"method"`
-	Headers map[string]interface{} `yaml:"headers"`
-	JSON    map[string]interface{} `yaml:"json"`
+	ID        string                 `yaml:"id"`
+	Method    string                 `yaml:"method"`
+	Headers   map[string]interface{} `yaml:"headers"`
+	JSON      map[string]interface{} `yaml:"json"`
+	Templates TemplateGroup          `yaml:"templates"`
 }
 
 type WebhookTemplate struct {

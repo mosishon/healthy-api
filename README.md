@@ -19,9 +19,44 @@
 - **Multi-Channel Alerting System:** Get notified via **SMTP (Email)**, **SMS (IPPanel)**, and **Webhooks**. The architecture is extensible for adding new channels.
 - **Intelligent Periodic Checks:** Set custom intervals (`check_period`) for monitoring each service.
 - **Spam Prevention:** Define a cooldown period (`sleep_on_fail`) after a failure is detected to avoid repetitive alerts.
-- **Customizable Health Conditions:** Specify the expected HTTP status code (`expected_status_code`) to define a "healthy" state for each service.
+- **Customizable Health Conditions:** Define complex health rules using **AND**, **OR**, **NOT**, **Regex**, **Header**, and **Response Time** checks.
+- **Recovery Notifications:** Get notified when a service comes back online after a failure.
+- **Smart Templating:** Use custom message templates for different types of failures (Network, HTTP, Latency, etc.).
 - **Concurrent by Design:** Utilizes Goroutines to monitor all services concurrently without blocking.
 - **Easy Configuration:** All settings are managed through a single, human-readable `YAML` file.
+
+---
+
+## 🛠️ Advanced Features
+
+### Smart Metadata & Templating
+You can use variables in your notification templates using Go's `text/template` syntax.
+
+| Variable | Description |
+| :--- | :--- |
+| `{{.Metadata.ServiceName}}` | The name of the service |
+| `{{.Metadata.ServiceURL}}` | The URL being checked |
+| `{{.Metadata.Status}}` | Current status (UP or DOWN) |
+| `{{.Metadata.Reason}}` | Detailed reason for failure (supports recursive reporting) |
+| `{{.Metadata.StatusCode}}` | HTTP status code received |
+| `{{.Metadata.ResponseTime}}`| Duration of the request |
+| `{{.Metadata.Timestamp}}` | When the check occurred |
+| `{{.Metadata.FailureCount}}`| Consecutive failures detected |
+
+### Template Groups
+Notifiers support `TemplateGroups`, allowing different messages for different failure types. This allows for intelligent selection:
+- `network_error`: Network/Connection issues.
+- `http_error`: Unexpected status codes.
+- `slow_response`: Latency threshold exceeded.
+- `condition_failed`: Logic/Regex/Header mismatch.
+- `recovery`: Triggered when a service returns to healthy state.
+- `default`: Fallback template.
+
+### Recursive Error Reporting
+When using nested `AND`/`OR` conditions, Healthy-API provides a detailed failure tree in the `Reason` field. This helps identify exactly which part of a complex condition caused the failure.
+
+### Recovery Notifications
+Set `notify_on_recovery: true` in your service configuration to receive alerts when services come back online.
 
 ---
 
@@ -149,17 +184,19 @@ The project is designed with a modular architecture to easily accommodate new fe
 
 ## 🗺️ Roadmap
 
-- [ ] Implement **Graceful Shutdown** using `context` for better Goroutine management.
+- [x] Implement **Graceful Shutdown** using `context` for better Goroutine management.
 - [x] Add **Unit Tests** for the `healthcheck` and `notifier` modules.
 - [x] Support **Response Body Validation** using regular expressions (Regex).
-- [ ] Add more notifiers (e.g., **Slack**, **Telegram**).
-- [X] Persist logs to a file or database for historical analysis.
+- [x] Add more notifiers (e.g., **Slack**, **Discord** via Webhooks).
+- [x] Persist logs to a file or database for historical analysis.
 - [ ] Develop a simple **Web UI** to display the real-time status of services.
-- [ ] Add cronjob insted of check_period.
-- [X] enhance logging.
-- [x] Add response time condition
-- [ ] Add json path condition
-- [x] Add retry policy 
+- [ ] Add cronjob instead of check_period.
+- [x] Enhance logging with `slog`.
+- [x] Add response time condition.
+- [ ] Add json path condition.
+- [x] Add retry policy (Threshold).
+- [x] Add Recovery notifications.
+- [x] Add Smart Template Groups.
 
 ---
 

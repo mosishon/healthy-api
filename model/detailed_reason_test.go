@@ -47,10 +47,10 @@ func TestEvaluate_DetailedReasons(t *testing.T) {
 		if !strings.Contains(result.Reason, "All OR conditions failed") {
 			t.Errorf("expected OR failure message, got: %s", result.Reason)
 		}
-		if !strings.Contains(result.Reason, "[0: Expected status 200, but got 500]") {
+		if !strings.Contains(result.Reason, "Sub-condition #0 failed: Expected status 200, but got 500") {
 			t.Errorf("expected reason 0, got: %s", result.Reason)
 		}
-		if !strings.Contains(result.Reason, "[1: Regex pattern 'UP' not found in body]") {
+		if !strings.Contains(result.Reason, "Sub-condition #1 failed: Regex pattern 'UP' not found in body") {
 			t.Errorf("expected reason 1, got: %s", result.Reason)
 		}
 	})
