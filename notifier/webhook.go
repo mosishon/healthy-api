@@ -7,6 +7,7 @@ import (
 	"healthy-api/model"
 	"log/slog"
 	"net/http"
+	"strings"
 	"text/template"
 )
 
@@ -100,6 +101,53 @@ func (w *WebhookNotifier) sendRequest(url string, headers map[string]interface{}
 	return nil
 }
 
+func (w *WebhookNotifier) selectTemplate(n model.Notification) map[string]interface{} {
+	// If no templates are defined in the group, use the legacy/direct JSON.
+	// But the user wants intelligent selection.
+	t := w.HookData.Templates
+	var tmplStr string
+
+	switch n.Type {
+	case model.NotificationNetworkError:
+		tmplStr = t.NetworkError
+	case model.NotificationHttpError:
+		tmplStr = t.HttpError
+	case model.NotificationSlowResponse:
+		tmplStr = t.SlowResponse
+	case model.NotificationConditionFailed:
+		tmplStr = t.ConditionFailed
+	case model.NotificationRecovery:
+		tmplStr = t.Recovery
+	default:
+		tmplStr = t.Default
+	}
+
+	if tmplStr == "" {
+		// If no specific template is defined, check if legacy JSON is provided and not empty
+		if len(w.HookData.JSON) > 0 {
+			// Check if it's just the default "text" field with generic message
+			if text, ok := w.HookData.JSON["text"].(string); ok && (text == "" || strings.Contains(text, "Alert for")) {
+				// It's probably a default/generic JSON, we can do better with our built-in templates
+				tmplStr = model.GetDefaultTemplate(n.Type)
+				return map[string]interface{}{"text": tmplStr}
+			}
+			return w.HookData.JSON
+		}
+		// Use built-in default
+		tmplStr = model.GetDefaultTemplate(n.Type)
+		return map[string]interface{}{"text": tmplStr}
+	}
+
+	// If we have a template string, we assume it's a JSON string.
+	// We'll try to unmarshal it.
+	var result map[string]interface{}
+	if err := json.Unmarshal([]byte(tmplStr), &result); err != nil {
+		// If it's not valid JSON, treat it as a simple text message for standard webhooks
+		return map[string]interface{}{"text": tmplStr}
+	}
+	return result
+}
+
 func (w *WebhookNotifier) Notify(n model.Notification) error {
 	for _, recipient := range n.Recipients {
 
@@ -107,11 +155,14 @@ func (w *WebhookNotifier) Notify(n model.Notification) error {
 			Metadata: n.Metadata,
 			URL:      recipient,
 		}
+
+		jsonToUse := w.selectTemplate(n)
+
 		filledHeaders, err := FillTemplate(w.HookData.Headers, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to fill headers template: %w", err)
 		}
-		filledJSON, err := FillTemplate(w.HookData.JSON, ctx)
+		filledJSON, err := FillTemplate(jsonToUse, ctx)
 		if err != nil {
 			return fmt.Errorf("failed to fill JSON template: %w", err)
 		}
