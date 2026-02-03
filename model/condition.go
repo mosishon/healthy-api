@@ -117,9 +117,32 @@ func (c *Condition) Validate(path string) error {
 }
 
 func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Duration) EvaluationResult {
-	// 1. منطق AND
+	// 1. Evaluate NOT Logic (First Priority)
+	if c.Not != nil {
+		res := c.Not.Evaluate(resp, body, duration)
+		if res.IsHealthy {
+			// Inversion: The forbidden condition matched!
+			reason := res.Reason
+			if c.Not.StatusCode != nil {
+				reason = fmt.Sprintf("✘ Forbidden Status Code: Received %d (which is disallowed)", resp.StatusCode)
+			} else {
+				// General NOT failure
+				reason = "✘ NOT condition triggered:\n  " + strings.ReplaceAll(res.Reason, "\n", "\n  ")
+			}
+			return EvaluationResult{
+				IsHealthy: false,
+				Reason:    reason,
+				Type:      NotificationConditionFailed,
+			}
+		}
+		// If inner was NOT healthy, then NOT(Unhealthy) is Healthy.
+		return EvaluationResult{IsHealthy: true, Reason: "Condition bypassed successfully"}
+	}
+
+	// 2. Evaluate AND Logic
 	if c.And != nil {
 		var failures []string
+		var successes []string
 		var firstType NotificationType
 		for _, cond := range c.And {
 			res := cond.Evaluate(resp, body, duration)
@@ -128,6 +151,8 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Dur
 					firstType = res.Type
 				}
 				failures = append(failures, res.Reason)
+			} else {
+				successes = append(successes, res.Reason)
 			}
 		}
 		if len(failures) > 0 {
@@ -137,105 +162,91 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Dur
 				Type:      firstType,
 			}
 		}
-		return EvaluationResult{IsHealthy: true}
+		return EvaluationResult{IsHealthy: true, Reason: strings.Join(successes, "\n")}
 	}
 
-	// 2. منطق OR
+	// 3. Evaluate OR Logic
 	if c.Or != nil {
 		var subFailures []string
 		for _, cond := range c.Or {
 			res := cond.Evaluate(resp, body, duration)
 			if res.IsHealthy {
-				return EvaluationResult{IsHealthy: true}
+				return EvaluationResult{IsHealthy: true, Reason: res.Reason}
 			}
-			// Indent sub-failures of OR
 			indented := "  " + strings.ReplaceAll(res.Reason, "\n", "\n  ")
 			subFailures = append(subFailures, indented)
 		}
 		return EvaluationResult{
 			IsHealthy: false,
-			Reason:    "- All OR conditions failed:\n" + strings.Join(subFailures, "\n"),
+			Reason:    "✘ All OR conditions failed:\n" + strings.Join(subFailures, "\n"),
 			Type:      NotificationConditionFailed,
 		}
 	}
 
-	// 3. منطق NOT
-	if c.Not != nil {
-		res := c.Not.Evaluate(resp, body, duration)
-		if res.IsHealthy {
-			return EvaluationResult{
-				IsHealthy: false,
-				Reason:    "- NOT condition failed: Forbidden condition matched successfully",
-				Type:      NotificationConditionFailed,
-			}
-		}
-		return EvaluationResult{IsHealthy: true}
-	}
+	// 4. Leaf Conditions - Always return detailed Reason even on success (for NOT inversion)
 
-	// 4. بررسی Regex
+	// Regex
 	if c.Regex != nil {
 		matched, _ := regexp.Match(c.Regex.Regex, body)
+		reason := fmt.Sprintf("Body Match: Pattern '%s' %s in response", c.Regex.Regex, map[bool]string{true: "found", false: "not found"}[matched])
 		if !matched {
-			return EvaluationResult{
-				IsHealthy: false,
-				Reason:    fmt.Sprintf("- Body Match: Pattern '%s' not found in response", c.Regex.Regex),
-				Type:      NotificationConditionFailed,
-			}
+			return EvaluationResult{IsHealthy: false, Reason: "✘ " + reason, Type: NotificationConditionFailed}
 		}
-		return EvaluationResult{IsHealthy: true}
+		return EvaluationResult{IsHealthy: true, Reason: "✔ " + reason}
 	}
 
-	// 5. بررسی StatusCode
+	// StatusCode
 	if c.StatusCode != nil {
 		if resp == nil {
-			return EvaluationResult{IsHealthy: false, Reason: "- Status Code: No response received", Type: NotificationHttpError}
+			return EvaluationResult{IsHealthy: false, Reason: "✘ Status Code: No response received", Type: NotificationHttpError}
 		}
-		if resp.StatusCode != c.StatusCode.Code {
+		isMatch := resp.StatusCode == c.StatusCode.Code
+		reason := fmt.Sprintf("Status Code: Expected %d, Got %d", c.StatusCode.Code, resp.StatusCode)
+		if !isMatch {
 			return EvaluationResult{
 				IsHealthy: false,
-				Reason:    fmt.Sprintf("- Status Code: Expected %d, Got %d\n- Reason: %s", c.StatusCode.Code, resp.StatusCode, http.StatusText(resp.StatusCode)),
+				Reason:    fmt.Sprintf("✘ %s\n- Reason: %s", reason, http.StatusText(resp.StatusCode)),
 				Type:      NotificationHttpError,
 			}
 		}
-		return EvaluationResult{IsHealthy: true}
+		return EvaluationResult{IsHealthy: true, Reason: "✔ " + reason}
 	}
 
-	// 6. بررسی Headers
+	// Header
 	if c.Header != nil {
 		if resp == nil {
-			return EvaluationResult{IsHealthy: false, Reason: "- Header: No response headers available", Type: NotificationConditionFailed}
+			return EvaluationResult{IsHealthy: false, Reason: "✘ Header: No response headers available", Type: NotificationConditionFailed}
 		}
-		var headerFailures []string
+		var failures []string
+		var successes []string
 		for _, h := range *c.Header {
 			actual := resp.Header.Get(h.Key)
-			if actual != h.Value {
-				headerFailures = append(headerFailures, fmt.Sprintf("- Header [%s]: Expected '%s', Got '%s'", h.Key, h.Value, actual))
+			match := actual == h.Value
+			reason := fmt.Sprintf("Header [%s]: Expected '%s', Got '%s'", h.Key, h.Value, actual)
+			if !match {
+				failures = append(failures, "✘ "+reason)
+			} else {
+				successes = append(successes, "✔ "+reason)
 			}
 		}
-		if len(headerFailures) > 0 {
-			return EvaluationResult{
-				IsHealthy: false,
-				Reason:    strings.Join(headerFailures, "\n"),
-				Type:      NotificationConditionFailed,
-			}
+		if len(failures) > 0 {
+			return EvaluationResult{IsHealthy: false, Reason: strings.Join(failures, "\n"), Type: NotificationConditionFailed}
 		}
-		return EvaluationResult{IsHealthy: true}
+		return EvaluationResult{IsHealthy: true, Reason: strings.Join(successes, "\n")}
 	}
 
-	// 7. بررسی Response Time
+	// Response Time
 	if c.ResponseTime != nil {
 		max, _ := time.ParseDuration(c.ResponseTime.MaxDuration)
-		if duration > max {
-			return EvaluationResult{
-				IsHealthy: false,
-				Reason:    fmt.Sprintf("- Latency: Expected <%s, Got %v", c.ResponseTime.MaxDuration, duration.Round(time.Millisecond)),
-				Type:      NotificationSlowResponse,
-			}
+		isMatch := duration <= max
+		reason := fmt.Sprintf("Latency: Expected <%s, Got %v", c.ResponseTime.MaxDuration, duration.Round(time.Millisecond))
+		if !isMatch {
+			return EvaluationResult{IsHealthy: false, Reason: "✘ " + reason, Type: NotificationSlowResponse}
 		}
-		return EvaluationResult{IsHealthy: true}
+		return EvaluationResult{IsHealthy: true, Reason: "✔ " + reason}
 	}
 
-	return EvaluationResult{IsHealthy: false, Reason: "- No valid condition defined", Type: NotificationDefault}
+	return EvaluationResult{IsHealthy: false, Reason: "✘ No valid condition defined", Type: NotificationDefault}
 }
 
 func (r *RegexCondition) Evaluate(body []byte) bool {

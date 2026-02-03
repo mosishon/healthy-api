@@ -23,7 +23,7 @@ func TestEvaluate_DetailedReasons(t *testing.T) {
 		if result.IsHealthy {
 			t.Fatal("expected failure")
 		}
-		if !strings.Contains(result.Reason, "- Body Match: Pattern 'UP' not found") {
+		if !strings.Contains(result.Reason, "✘ Body Match: Pattern 'UP' not found") {
 			t.Errorf("expected original failure message to be included, got: %s", result.Reason)
 		}
 	})
@@ -41,7 +41,7 @@ func TestEvaluate_DetailedReasons(t *testing.T) {
 		if result.IsHealthy {
 			t.Fatal("expected failure")
 		}
-		if !strings.Contains(result.Reason, "- All OR conditions failed") {
+		if !strings.Contains(result.Reason, "✘ All OR conditions failed") {
 			t.Errorf("expected OR failure message, got: %s", result.Reason)
 		}
 		if !strings.Contains(result.Reason, "Status Code: Expected 200, Got 500") {
@@ -64,7 +64,7 @@ func TestEvaluate_DetailedReasons(t *testing.T) {
 		if result.IsHealthy {
 			t.Fatal("expected failure")
 		}
-		if !strings.Contains(result.Reason, "NOT condition failed") {
+		if !strings.Contains(result.Reason, "✘ Forbidden Status Code: Received 500") {
 			t.Errorf("expected NOT failure message, got: %s", result.Reason)
 		}
 	})
