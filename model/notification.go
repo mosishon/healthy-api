@@ -7,6 +7,8 @@ type NotificationMetadata struct {
 	StatusCode   int
 	ResponseTime string
 	Timestamp    string
+	FailureCount int
+	Threshold    int
 }
 
 type Notification struct {
