@@ -8,7 +8,6 @@ type Webhook struct {
 }
 
 type WebhookTemplate struct {
-	ServiceName string
-	TimeStamp   string
-	URL         string
+	Metadata NotificationMetadata
+	URL      string // This is the recipient URL
 }
