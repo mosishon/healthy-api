@@ -7,6 +7,7 @@ import (
 	"healthy-api/model"
 	"log/slog"
 	"net/http"
+	"strings"
 	"text/template"
 )
 
@@ -122,16 +123,27 @@ func (w *WebhookNotifier) selectTemplate(n model.Notification) map[string]interf
 	}
 
 	if tmplStr == "" {
-		return w.HookData.JSON
+		// If no specific template is defined, check if legacy JSON is provided and not empty
+		if len(w.HookData.JSON) > 0 {
+			// Check if it's just the default "text" field with generic message
+			if text, ok := w.HookData.JSON["text"].(string); ok && (text == "" || strings.Contains(text, "Alert for")) {
+				// It's probably a default/generic JSON, we can do better with our built-in templates
+				tmplStr = model.GetDefaultTemplate(n.Type)
+				return map[string]interface{}{"text": tmplStr}
+			}
+			return w.HookData.JSON
+		}
+		// Use built-in default
+		tmplStr = model.GetDefaultTemplate(n.Type)
+		return map[string]interface{}{"text": tmplStr}
 	}
 
 	// If we have a template string, we assume it's a JSON string.
 	// We'll try to unmarshal it.
 	var result map[string]interface{}
 	if err := json.Unmarshal([]byte(tmplStr), &result); err != nil {
-		// If it's not valid JSON, maybe it's just a message string?
-		// To keep it simple and consistent with the legacy behavior:
-		return w.HookData.JSON
+		// If it's not valid JSON, treat it as a simple text message for standard webhooks
+		return map[string]interface{}{"text": tmplStr}
 	}
 	return result
 }

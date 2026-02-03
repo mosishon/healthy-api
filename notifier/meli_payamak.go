@@ -41,7 +41,10 @@ func (p *PayamakNotifier) selectTemplate(n model.Notification) string {
 	}
 
 	if tmplStr == "" {
-		return p.Template
+		if p.Template != "" {
+			return p.Template
+		}
+		return model.GetDefaultTemplate(n.Type)
 	}
 	return tmplStr
 }

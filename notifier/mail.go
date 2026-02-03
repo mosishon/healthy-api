@@ -37,6 +37,10 @@ func (m *MailNotifier) selectTemplate(n model.Notification) string {
 		tmplStr = t.Default
 	}
 
+	if tmplStr == "" {
+		return model.GetDefaultTemplate(n.Type)
+	}
+
 	return tmplStr
 }
 
