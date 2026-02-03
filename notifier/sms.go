@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"healthy-api/model"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
-	"log/slog"
-
 )
 
 type SMSNotifier struct {
@@ -46,7 +45,7 @@ func (s *SMSNotifier) GetURL() string {
 func (s *SMSNotifier) GetName() string {
 	return fmt.Sprintf("SMSNotifier(%s)", s.URL)
 }
-func (s SMSNotifier) Notify(n model.Notification) error {
+func (s *SMSNotifier) Notify(n model.Notification) error {
 
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -61,7 +60,7 @@ func (s SMSNotifier) Notify(n model.Notification) error {
 			Recipient:   target,
 			PatternCode: s.GetCodePattern(),
 			InputData: []map[string]string{
-				{s.GetDataKey(): n.ServiceName},
+				{s.GetDataKey(): n.Metadata.ServiceName},
 			},
 		})
 		if err != nil {
@@ -81,7 +80,8 @@ func (s SMSNotifier) Notify(n model.Notification) error {
 		if resp.StatusCode != 200 {
 			return fmt.Errorf("Error response code is %d. Body: %s", resp.StatusCode, string(bodyData))
 		}
-s.Logger.Info("sms_sent", "target", target, "status", resp.StatusCode, "body", string(bodyData))	}
+		s.Logger.Info("sms_sent", "target", target, "status", resp.StatusCode, "body", string(bodyData))
+	}
 
 	return nil
 }
