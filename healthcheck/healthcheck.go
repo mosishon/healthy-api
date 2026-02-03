@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -48,7 +49,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 
 	evaluationRes := model.EvaluationResult{
 		IsHealthy: false,
-		Reason:    "Unknown error",
+		Reason:    []string{"Unknown error"},
 	}
 
 	if h.Service.UserAgent != "" {
@@ -65,7 +66,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 	sCode := 0
 
 	if err != nil {
-		evaluationRes.Reason = fmt.Sprintf("- Reason: %v", err)
+		evaluationRes.Reason = []string{fmt.Sprintf("- Reason: %v", err)}
 		evaluationRes.Type = model.NotificationNetworkError
 	} else if resp != nil {
 		sCode = resp.StatusCode
@@ -77,9 +78,11 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 		if ok {
 			evaluationRes = cond.Evaluate(resp, bodyData, requestDuration)
 		} else {
-			evaluationRes.Reason = "Condition registry not found"
+			evaluationRes.Reason = []string{"Condition registry not found"}
 		}
 	}
+
+	joinedReason := strings.Join(evaluationRes.Reason, "\n")
 
 	if !evaluationRes.IsHealthy {
 		h.failureCount++
@@ -90,7 +93,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 			"threshold", h.Service.Threshold,
 			"status", sCode,
 			"duration", requestDuration,
-			"reason", evaluationRes.Reason)
+			"reason", joinedReason)
 
 		if h.failureCount >= h.Service.Threshold {
 			h.Logger.Error("threshold_reached", "service", h.Service.Name, "action", "sending_notifications")
@@ -99,7 +102,7 @@ func (h *HealthChecker) performCheck(nextWait *time.Duration) {
 			metadata := model.NotificationMetadata{
 				ServiceName:  h.Service.Name,
 				ServiceURL:   h.Service.URL,
-				Reason:       evaluationRes.Reason,
+				Reason:       joinedReason,
 				StatusCode:   sCode,
 				ResponseTime: requestDuration.Round(time.Millisecond).String(),
 				Timestamp:    time.Now().Format(time.RFC3339),

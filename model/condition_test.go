@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// تابع کمکی برای شبیه‌سازی پاسخ HTTP
+// Helper function to mock HTTP response
 func newMockResponse(statusCode int, body string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
@@ -37,25 +37,22 @@ func TestCondition_EvaluateComplexNested(t *testing.T) {
 	t.Run("should pass with status 200 and correct body", func(t *testing.T) {
 		resp := newMockResponse(200, "System status is OK")
 		result := complexCondition.Evaluate(resp, []byte("System status is OK"), dummyDuration)
-		// اصلاح: استفاده از .IsHealthy
 		if !result.IsHealthy {
-			t.Errorf("Expected true, but got false. Reason: %s", result.Reason)
+			t.Errorf("Expected true, but got false. Reason: %v", result.Reason)
 		}
 	})
 
 	t.Run("should pass with status 404", func(t *testing.T) {
 		resp := newMockResponse(404, "Not Found")
 		result := complexCondition.Evaluate(resp, []byte("Not Found"), dummyDuration)
-		// اصلاح: استفاده از .IsHealthy
 		if !result.IsHealthy {
-			t.Errorf("Expected true, but got false. Reason: %s", result.Reason)
+			t.Errorf("Expected true, but got false. Reason: %v", result.Reason)
 		}
 	})
 
 	t.Run("should fail with status 200 and wrong body", func(t *testing.T) {
 		resp := newMockResponse(200, "System status is Error")
 		result := complexCondition.Evaluate(resp, []byte("System status is Error"), dummyDuration)
-		// اصلاح: استفاده از .IsHealthy
 		if result.IsHealthy {
 			t.Error("Expected false, but got true")
 		}
@@ -69,13 +66,13 @@ func TestResponseTimeCondition(t *testing.T) {
 		},
 	}
 
-	// حالت موفق
+	// Success case
 	resultOk := cond.Evaluate(nil, nil, 200*time.Millisecond)
 	if !resultOk.IsHealthy {
-		t.Errorf("Expected true for 200ms, got false. Reason: %s", resultOk.Reason)
+		t.Errorf("Expected true for 200ms, got false. Reason: %v", resultOk.Reason)
 	}
 
-	// حالت شکست
+	// Failure case
 	resultFail := cond.Evaluate(nil, nil, 600*time.Millisecond)
 	if resultFail.IsHealthy {
 		t.Errorf("Expected false for 600ms, but got true")
@@ -93,19 +90,19 @@ func TestCombinedCondition(t *testing.T) {
 	resp200 := &http.Response{StatusCode: 200}
 	resp500 := &http.Response{StatusCode: 500}
 
-	// موفق
+	// Success
 	res1 := cond.Evaluate(resp200, nil, 100*time.Millisecond)
 	if !res1.IsHealthy {
-		t.Errorf("Should be healthy, but got: %s", res1.Reason)
+		t.Errorf("Should be healthy, but got: %v", res1.Reason)
 	}
 
-	// شکست (سرعت پایین)
+	// Failure (slow response)
 	res2 := cond.Evaluate(resp200, nil, 700*time.Millisecond)
 	if res2.IsHealthy {
 		t.Error("Should fail because response is too slow")
 	}
 
-	// شکست (کد وضعیت غلط)
+	// Failure (wrong status code)
 	res3 := cond.Evaluate(resp500, nil, 100*time.Millisecond)
 	if res3.IsHealthy {
 		t.Error("Should fail because status code is 500")
