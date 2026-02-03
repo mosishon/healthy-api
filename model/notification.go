@@ -28,12 +28,12 @@ type TemplateGroup struct {
 }
 
 const (
-	DefaultNetworkErrorTemplate    = "[🔌 Network Alert] {{.Metadata.ServiceName}} - Connection failed at {{.Metadata.Timestamp}}. Error: {{.Metadata.Reason}}"
-	DefaultHttpErrorTemplate       = "[❌ HTTP Alert] {{.Metadata.ServiceName}} returned {{.Metadata.StatusCode}} at {{.Metadata.Timestamp}}. URL: {{.Metadata.ServiceURL}}"
-	DefaultSlowResponseTemplate    = "[⏱️ Latency Alert] {{.Metadata.ServiceName}} is slow! Response time: {{.Metadata.ResponseTime}} (Threshold exceeded) at {{.Metadata.Timestamp}}."
-	DefaultConditionFailedTemplate = "[🔍 Validation Alert] {{.Metadata.ServiceName}} failed health criteria at {{.Metadata.Timestamp}}. Detail: {{.Metadata.Reason}}"
-	DefaultRecoveryTemplate        = "[✅ Recovery] {{.Metadata.ServiceName}} is back online! Status: Healthy. Restored at: {{.Metadata.Timestamp}}."
-	DefaultNotificationTemplate    = "[🔔 Alert] {{.Metadata.ServiceName}} status is {{.Metadata.Status}} at {{.Metadata.Timestamp}}."
+	DefaultNetworkErrorTemplate    = "[🔌 Network Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
+	DefaultHttpErrorTemplate       = "[❌ HTTP Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
+	DefaultSlowResponseTemplate    = "[⏱️ Latency Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
+	DefaultConditionFailedTemplate = "[🔍 Validation Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n{{.Metadata.Reason}}"
+	DefaultRecoveryTemplate        = "[✅ Recovery] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: Service is now Healthy"
+	DefaultNotificationTemplate    = "[🔔 Alert] {{.Metadata.ServiceName}}\n- Time: {{.Metadata.Timestamp}}\n- Status: {{.Metadata.Status}}"
 )
 
 func GetDefaultTemplate(t NotificationType) string {
