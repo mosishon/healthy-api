@@ -2,3 +2,4 @@ test.yaml
 sp*.yaml
 *.exe
 *.log
+*.bat
