@@ -17,8 +17,8 @@ type MailNotifier struct {
 }
 
 func (m *MailNotifier) CreateMessage(metadata model.NotificationMetadata, to string, subject string) string {
-	return fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\n\nService **%s** (%s) is not working good.\nReason: %s\nStatus Code: %d\nResponse Time: %s\nTimestamp: %s\nCheck it fast please.",
-		m.Sender, to, subject, metadata.ServiceName, metadata.ServiceURL, metadata.Reason, metadata.StatusCode, metadata.ResponseTime, metadata.Timestamp)
+	return fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\n\nService **%s** (%s) is not working good.\nReason: %s\nStatus Code: %d\nResponse Time: %s\nTimestamp: %s\nFailure Count: %d\nThreshold: %d\nCheck it fast please.",
+		m.Sender, to, subject, metadata.ServiceName, metadata.ServiceURL, metadata.Reason, metadata.StatusCode, metadata.ResponseTime, metadata.Timestamp, metadata.FailureCount, metadata.Threshold)
 }
 
 func (m *MailNotifier) GetName() string {

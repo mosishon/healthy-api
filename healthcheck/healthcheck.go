@@ -100,6 +100,8 @@ func (h *HealthChecker) performCheck(failureCount *int, nextWait *time.Duration)
 				StatusCode:   sCode,
 				ResponseTime: requestDuration.Round(time.Millisecond).String(),
 				Timestamp:    time.Now().Format(time.RFC3339),
+				FailureCount: *failureCount,
+				Threshold:    h.Service.Threshold,
 			}
 
 			for _, target := range h.Service.Targets {

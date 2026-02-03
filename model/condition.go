@@ -4,29 +4,29 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
-
 )
 
 type ConditionType string
 
 const (
-	ConditionRegex      ConditionType = "regex"
-	ConditionStatusCode ConditionType = "status_code"
-	ConditionHeader     ConditionType = "header"
-	ConditionAnd        ConditionType = "and"
-	ConditionOr         ConditionType = "or"
-	ConditionNot        ConditionType = "not"
+	ConditionRegex        ConditionType = "regex"
+	ConditionStatusCode   ConditionType = "status_code"
+	ConditionHeader       ConditionType = "header"
+	ConditionAnd          ConditionType = "and"
+	ConditionOr           ConditionType = "or"
+	ConditionNot          ConditionType = "not"
 	ConditionResponseTime ConditionType = "response_time"
 )
 
 type Condition struct {
-	And        []*Condition         `yaml:"and,omitempty"`
-	Or         []*Condition         `yaml:"or,omitempty"`
-	Not        *Condition           `yaml:"not,omitempty"`
-	Regex      *RegexCondition      `yaml:"regex,omitempty"`
-	StatusCode *StatusCodeCondition `yaml:"status_code,omitempty"`
-	Header     *[]HeaderCondition   `yaml:"header,omitempty"`
+	And          []*Condition           `yaml:"and,omitempty"`
+	Or           []*Condition           `yaml:"or,omitempty"`
+	Not          *Condition             `yaml:"not,omitempty"`
+	Regex        *RegexCondition        `yaml:"regex,omitempty"`
+	StatusCode   *StatusCodeCondition   `yaml:"status_code,omitempty"`
+	Header       *[]HeaderCondition     `yaml:"header,omitempty"`
 	ResponseTime *ResponseTimeCondition `yaml:"response_time,omitempty"`
 }
 
@@ -86,27 +86,34 @@ func (c *Condition) Validate(path string) error {
 			return fmt.Errorf("invalid duration format '%s' at %s: %v", c.ResponseTime.MaxDuration, path, err)
 		}
 	}
-	for _, and := range c.And {
-		path = path + "." + "and"
-		if err := and.Validate(path); err != nil {
+	for i, and := range c.And {
+		if err := and.Validate(fmt.Sprintf("%s.and[%d]", path, i)); err != nil {
 			return err
 		}
 	}
-	for _, or := range c.And {
-		path = path + "." + "or"
-		if err := or.Validate(path); err != nil {
+	for i, or := range c.Or {
+		if err := or.Validate(fmt.Sprintf("%s.or[%d]", path, i)); err != nil {
+			return err
+		}
+	}
+	if c.Not != nil {
+		if err := c.Not.Validate(path + ".not"); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
 func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Duration) EvaluationResult {
 	// 1. منطق AND
 	if c.And != nil {
-		for _, cond := range c.And {
+		for i, cond := range c.And {
 			res := cond.Evaluate(resp, body, duration)
 			if !res.IsHealthy {
-				return res
+				return EvaluationResult{
+					IsHealthy: false,
+					Reason:    fmt.Sprintf("AND condition failed (index %d): %s", i, res.Reason),
+				}
 			}
 		}
 		return EvaluationResult{IsHealthy: true}
@@ -120,25 +127,25 @@ func (c *Condition) Evaluate(resp *http.Response, body []byte, duration time.Dur
 			if res.IsHealthy {
 				return EvaluationResult{IsHealthy: true}
 			}
-			reasons = append(reasons, fmt.Sprintf("OR[%d]: %s", i, res.Reason))
+			reasons = append(reasons, fmt.Sprintf("[%d: %s]", i, res.Reason))
 		}
 		return EvaluationResult{
 			IsHealthy: false,
-			Reason:    fmt.Sprintf("All OR conditions failed: %v", reasons),
+			Reason:    fmt.Sprintf("All OR conditions failed: %s", strings.Join(reasons, ", ")),
 		}
 	}
 
 	// 3. منطق NOT
 	if c.Not != nil {
-    res := c.Not.Evaluate(resp, body, duration)
-    if res.IsHealthy {
-        return EvaluationResult{
-            IsHealthy: false,
-            Reason:    "Forbidden condition matched (Service should not have met this condition)",
-        }
-    }
-    return EvaluationResult{IsHealthy: true}
-}
+		res := c.Not.Evaluate(resp, body, duration)
+		if res.IsHealthy {
+			return EvaluationResult{
+				IsHealthy: false,
+				Reason:    "NOT condition failed: the forbidden condition matched successfully",
+			}
+		}
+		return EvaluationResult{IsHealthy: true}
+	}
 
 	// 4. بررسی Regex
 	if c.Regex != nil {
@@ -216,9 +223,7 @@ func (h *HeaderCondition) Evaluate(resp *http.Response) bool {
 func (rt *ResponseTimeCondition) Evaluate(actual time.Duration) bool {
 	max, err := time.ParseDuration(rt.MaxDuration)
 	if err != nil {
-		return false 
+		return false
 	}
 	return actual <= max
 }
-
-// TODO: jsonpath condition
